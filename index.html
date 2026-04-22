@@ -1,0 +1,3421 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Live Stream Dashboard — Muslin Pajamas</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:#21373C;--teal:#8FACD7;--orange:#A05E44;
+    --green:#4A8C6F;--red:#C0392B;--gray:#8A9BA0;
+    --light:#EAE5D8;--white:#FFFFFF;--border:rgba(33,55,60,0.18);
+    --shopee:#EE4D2D; --facebook:#1877F2;
+    --font:'Inter',system-ui,sans-serif;
+    --deep:#21373C; --cotton:#EAE5D8; --blue:#8FACD7; --lace:#A05E44;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--font);background:#EAE5D8;color:#21373C;font-size:13px;-webkit-font-smoothing:antialiased}
+
+  /* LOGIN OVERLAY */
+  #login-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  #login-overlay.hidden { display: none; }
+  .login-box {
+    background: white; padding: 28px 24px; border-radius: 12px; text-align: center;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4); width: 320px; max-width: 90vw;
+  }
+  .login-box h2 { color: var(--navy); font-size: 16px; margin-bottom: 8px; font-weight: 700; letter-spacing: .02em; }
+  .login-box p { color: var(--gray); font-size: 11px; margin-bottom: 20px; }
+  .login-box input {
+    width: 100%; padding: 10px; margin-bottom: 12px; border: 1.5px solid var(--border);
+    border-radius: 6px; font-size: 14px; text-align: center; font-family: var(--font); outline: none; transition: .2s;
+  }
+  .login-box input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(26,188,156,.15); }
+  .btn-group-login { display: flex; gap: 8px; }
+  .btn-group-login button {
+    flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; transition: .2s;
+  }
+  .btn-login-submit { background: var(--teal); color: white; }
+  .btn-login-submit:hover { background: #16A085; }
+  .btn-login-cancel { background: var(--light); color: var(--navy); }
+  .btn-login-cancel:hover { background: #BDC3C7; }
+  #login-err { color: var(--red); font-size: 12px; margin-top: 12px; display: none; font-weight: 600; }
+
+  /* TOP BAR & SYNC */
+  .topbar{background:var(--navy);color:white;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;border-bottom:1px solid rgba(255,255,255,.07)}
+  .topbar-left{display:flex;align-items:center;gap:12px}
+  .topbar-logo{width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0}
+  .topbar-left h1{font-size:15px;font-weight:700;letter-spacing:.04em}
+  .topbar-left .sub{font-size:10px;opacity:.55;letter-spacing:.08em;text-transform:uppercase}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap}
+  .tab-btn{padding:6px 14px;border:none;border-radius:6px 6px 0 0;cursor:pointer;font-size:12px;font-weight:600;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);transition:.2s;letter-spacing:.01em}
+  .tab-btn.active{background:var(--teal);color:white}
+  .tab-btn:hover:not(.active){background:rgba(255,255,255,.18);color:white}
+
+  .sync-bar{background:#182B2F;padding:6px 20px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.6)}
+  .sync-status{display:flex;align-items:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--gray);flex-shrink:0}
+  .dot.connected{background:var(--green);box-shadow:0 0 6px var(--green)}
+  .dot.error{background:var(--red)}
+  .dot.loading{background:var(--orange);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .sync-actions{display:flex;gap:8px;align-items:center}
+  .btn-sm{padding:3px 10px;border:1px solid rgba(255,255,255,.3);background:transparent;color:rgba(255,255,255,.8);border-radius:4px;cursor:pointer;font-size:11px;transition:.2s}
+  .btn-sm:hover{background:rgba(255,255,255,.1)}
+  .btn-sm.active-btn{background:var(--teal);border-color:var(--teal);color:white}
+
+  .page{display:none;padding:14px 18px}
+  .page.active{display:block}
+
+  /* CARDS & PANELS */
+  .card-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .card{background:white;border-radius:10px;padding:12px 16px;flex:1;min-width:130px;box-shadow:0 1px 4px rgba(33,55,60,.08);border-top:3px solid var(--teal)}
+  .card.orange{border-top-color:var(--orange)}.card.green{border-top-color:var(--green)}.card.red{border-top-color:var(--red)}.card.shopee{border-top-color:var(--shopee)}.card.tktk{border-top-color:#555}
+  .card-label{font-size:10px;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  .card-val{font-size:20px;font-weight:700;color:var(--navy)}
+  .card-sub{font-size:10px;color:var(--gray);margin-top:2px}
+
+  .panel{background:white;border-radius:10px;padding:14px;box-shadow:0 1px 4px rgba(33,55,60,.08);margin-bottom:14px}
+  .panel-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px;border-bottom:2px solid var(--light);padding-bottom:7px;display:flex;align-items:center;justify-content:space-between}
+  
+  /* เพิ่ม Grid สำหรับ 3 คอลัมน์ (รองรับ Facebook) */
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  @media(max-width:900px){.three-col{grid-template-columns:1fr;}}
+  @media(max-width:700px){.two-col{grid-template-columns:1fr}}
+
+  table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}
+  th{background:var(--navy);color:rgba(234,229,216,.9);padding:7px 9px;text-align:center;font-weight:600;letter-spacing:.03em;font-size:11px}
+  td{padding:6px 9px;text-align:center;border-bottom:1px solid var(--light)}
+  tr:hover td{background:var(--light)}
+  tr.alt td{background:#F8FFFE}
+  .badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
+  .badge-live{background:#D5F5E3;color:#1E8449}.badge-rerun{background:#EAECEE;color:#566573}
+  .badge-shopee{background:#FDEDEC;color:#C0392B}
+  .badge-tiktok{background:#EAECEE;color:#17202A}
+  .badge-facebook{background:#E7F3FF;color:#1877F2} /* ป้าย Facebook */
+  .badge-top{background:#D5F5E3;color:#1E8449}.badge-mid{background:#FEF9E7;color:#9A7D0A}.badge-low{background:#FDEDEC;color:#C0392B}
+
+  /* FORM */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px}
+  .form-group label{display:block;font-size:11px;font-weight:600;color:var(--navy);margin-bottom:3px}
+  .form-group input,.form-group select,.form-group textarea{width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font);outline:none;transition:.2s}
+  .form-group input:focus,.form-group select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(26,188,156,.15)}
+  .form-group.wide{grid-column:span 2}
+  .btn{padding:8px 18px;border:none;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer;transition:.2s}
+  .btn-save{background:var(--teal);color:white}.btn-save:hover{background:#16A085}
+  .btn-save:disabled{background:var(--gray);cursor:not-allowed}
+  .btn-danger{background:var(--red);color:white;font-size:10px;padding:3px 8px}
+  .btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center}
+
+  /* BARS */
+  .bar-container{display:flex;flex-direction:column;gap:5px}
+  .bar-row{display:flex;align-items:center;gap:8px}
+  .bar-label{width:55px;text-align:right;font-size:11px;font-weight:600;flex-shrink:0}
+  .bar-track{flex:1;background:var(--light);border-radius:4px;height:20px;overflow:hidden}
+  .bar-fill{height:100%;border-radius:4px;display:flex;align-items:center;padding-left:6px;font-size:10px;font-weight:700;color:white;transition:width .5s ease}
+  .bar-val{width:78px;font-size:11px;font-weight:600;color:var(--navy)}
+
+  /* HEATMAP */
+  .heatmap-grid{display:grid;gap:4px}
+  .hc{border-radius:6px;padding:8px 4px;text-align:center;font-size:10px;font-weight:700;color:white;cursor:default;transition:.2s}
+  .hc:hover{transform:scale(1.05)}
+  .h0{background:#EAECEE;color:#888}.h1{background:#A9DFBF;color:#1E8449}.h2{background:#52BE80;color:white}.h3{background:#1E8449;color:white}
+  /* METRIC TOGGLE */
+  .metric-btn{padding:4px 14px;border-radius:20px;border:1.5px solid #DDD;background:#FFF;font-size:12px;font-weight:600;color:#888;cursor:pointer;transition:.15s}
+  .metric-btn:hover{border-color:var(--teal);color:var(--teal)}
+  .metric-active{background:var(--teal);color:white!important;border-color:var(--teal)!important}
+
+  /* PLATFORM CARDS */
+  .plat-row{display:flex;gap:10px; flex-wrap:wrap;}
+  .plat-card{flex:1; min-width: 150px; border-radius:8px; padding:12px; color:white}
+  .plat-shopee{background:linear-gradient(135deg,#EE4D2D,#FF7043)}
+  .plat-tiktok{background:linear-gradient(135deg,#17202A,#555)}
+  .plat-facebook{background:linear-gradient(135deg,#1877F2,#3b5998)} /* การ์ด Facebook */
+  .plat-card .pn{font-size:12px;font-weight:700;opacity:.85}
+  .plat-card .pv{font-size:22px;font-weight:800;margin:4px 0}
+  .plat-card .ps{font-size:10px;opacity:.7}
+
+  .alert-box{border-radius:7px;padding:9px 12px;margin-bottom:7px;font-size:12px;display:flex;align-items:flex-start;gap:8px}
+  .aw{background:#FEF9E7;border-left:4px solid #F39C12;color:#7D6608}
+  .ag{background:#D5F5E3;border-left:4px solid #27AE60;color:#145A32}
+  .ai{background:#EBF5FB;border-left:4px solid #2980B9;color:#154360}
+
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .toast{position:fixed;bottom:20px;right:20px;background:var(--teal);color:white;padding:10px 18px;border-radius:8px;font-weight:600;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,.2);transform:translateY(60px);opacity:0;transition:.3s;z-index:999}
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast.error-toast{background:var(--red)}
+
+  .loading-overlay{position:fixed;inset:0;background:rgba(44,62,80,.7);z-index:500;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;color:white}
+  .loading-overlay.hidden{display:none}
+  .loading-overlay .lo-text{font-size:14px;font-weight:600}
+
+  /* FILTER BAR */
+  .filter-bar{background:#1C2E32;padding:7px 20px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,.7);border-bottom:1px solid rgba(255,255,255,.07)}
+  .filter-bar-label{font-weight:700;opacity:.9;white-space:nowrap}
+  .filter-bar input[type=date]{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:white;padding:4px 8px;border-radius:4px;font-size:11px;outline:none;cursor:pointer;font-family:var(--font)}
+  .filter-bar input[type=date]:focus{border-color:var(--teal)}
+  .filter-bar input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.6;cursor:pointer}
+  .filter-sep{opacity:.4;font-size:13px}
+  .filter-apply{padding:4px 12px;background:var(--teal);border:none;border-radius:4px;color:white;font-size:11px;font-weight:700;cursor:pointer;transition:.2s}
+  .filter-apply:hover{background:#16A085}
+  .filter-preset{padding:3px 9px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.65);border-radius:4px;cursor:pointer;font-size:10px;font-weight:600;transition:.2s;white-space:nowrap}
+  .filter-preset:hover{background:rgba(255,255,255,.1);color:white}
+  .filter-preset.fp-active{background:var(--teal);border-color:var(--teal);color:white}
+  .filter-count{margin-left:auto;font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.1)}
+  .filter-count.filtered{background:rgba(243,156,18,.25);color:#F39C12}
+
+  /* DAILY VIEW */
+  .daily-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .day-nav-btn{padding:6px 12px;border:1.5px solid var(--border);background:white;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;transition:.2s;color:var(--navy)}
+  .day-nav-btn:hover{border-color:var(--teal);color:var(--teal)}
+  .day-date-input{padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);outline:none;font-weight:700;color:var(--navy)}
+  .day-date-input:focus{border-color:var(--teal)}
+  .daily-plat-section{margin-bottom:12px}
+  .daily-plat-label{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px}
+  .shift-slots{display:flex;flex-wrap:wrap;gap:8px}
+  .shift-slot{border-radius:8px;padding:9px 13px;cursor:pointer;border:2px solid;transition:.2s;min-width:115px;text-align:center}
+  .shift-slot.filled{border-color:var(--green);background:#EBF9F1}
+  .shift-slot.empty{border-color:#CCC;background:#FAFAFA;border-style:dashed}
+  .shift-slot.selected{border-color:var(--teal);background:#E8F8F5;box-shadow:0 0 0 3px rgba(26,188,156,.2);border-style:solid}
+  .shift-slot:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.1);border-style:solid}
+  .slot-name{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:3px}
+  .slot-ok{font-size:10px;color:var(--green);font-weight:700}
+  .slot-miss{font-size:10px;color:#BBB}
+  .slot-planned{font-size:10px;color:#E67E22;font-weight:700}
+  .slot-adhoc{font-size:10px;color:#2980B9;font-weight:700}
+  .slot-cancelled{font-size:10px;color:#E74C3C;font-weight:700}
+  .shift-slot.planned{border-color:#F39C12;background:#FFFBF0;border-style:dashed}
+  .shift-slot.adhoc{border-color:#2980B9;background:#EBF5FB}
+  .shift-slot.cancelled{border-color:#E74C3C;background:#FDEDEC;opacity:.75}
+  .variant-badge{display:inline-block;padding:1px 5px;border-radius:8px;font-size:9px;font-weight:700;margin-top:2px}
+  .vb-ot{background:#FEF0E7;color:#E67E22}.vb-adhoc{background:#EBF5FB;color:#2980B9}
+  .vb-late{background:#FEF9E7;color:#F39C12}.vb-cancel{background:#FDEDEC;color:#E74C3C}
+  .card.blue{border-top-color:#2980B9}.card.purple{border-top-color:#9B59B6}
+  .slot-detail{font-size:10px;color:var(--gray);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px}
+  .form-locked-header{background:var(--light);border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .locked-tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+
+  /* ===== MC PLAN TAB ===== */
+  .mcp-cal-header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .mcp-month-nav{padding:5px 12px;border:1.5px solid var(--border);background:white;border-radius:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--navy);transition:.2s}
+  .mcp-month-nav:hover{border-color:var(--teal);color:var(--teal)}
+  .mcp-month-label{font-size:15px;font-weight:800;color:var(--navy);min-width:140px;text-align:center}
+  .mcp-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .mcp-cal-dow{text-align:center;font-size:10px;font-weight:700;color:var(--gray);padding:4px 0}
+  .mcp-cal-day{border-radius:8px;padding:6px 4px 5px;cursor:pointer;border:1.5px solid transparent;transition:.15s;background:white;box-shadow:0 1px 4px rgba(0,0,0,.06);min-height:58px}
+  .mcp-cal-day:hover:not(.empty){border-color:var(--teal);transform:translateY(-1px);box-shadow:0 3px 10px rgba(26,188,156,.18)}
+  .mcp-cal-day.today{border-color:var(--orange)!important;background:#FFF8F2}
+  .mcp-cal-day.mcp-selected{border-color:var(--teal)!important;background:#E8F8F5;box-shadow:0 0 0 3px rgba(26,188,156,.18)}
+  .mcp-cal-day.empty{background:transparent;box-shadow:none;cursor:default;border:none}
+  .mcp-cal-day-num{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:3px}
+  .mcp-cal-day.today .mcp-cal-day-num{color:var(--orange)}
+  .mcp-cov-bar{height:5px;border-radius:3px;background:var(--light);overflow:hidden;margin-bottom:2px}
+  .mcp-cov-fill{height:100%;border-radius:3px;transition:width .3s}
+  .mcp-cov-text{font-size:9px;color:var(--gray);font-weight:600}
+  .mcp-mc-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:2px}
+  .mcp-mc-dot{width:7px;height:7px;border-radius:50%}
+
+  .mcp-detail-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px;border-bottom:2px solid var(--light);padding-bottom:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+  /* ===== MCP Detail — 3-column platform cards ===== */
+  .mcp-detail-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:start}
+  @media(max-width:960px){.mcp-detail-cols{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.mcp-detail-cols{grid-template-columns:1fr}}
+
+  .mcp-plat-card{border-radius:10px;overflow:hidden;border:1.5px solid var(--border);background:white;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+  .mcp-plat-card-hdr{padding:9px 12px;display:flex;align-items:center;gap:7px;border-bottom:1.5px solid var(--border)}
+  .mcp-plat-card-hdr .ph-name{font-size:12px;font-weight:800;letter-spacing:.4px}
+  .mcp-plat-card-hdr .ph-cov{margin-left:auto;font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px}
+  .mcp-plat-card-body{padding:6px 8px}
+
+  /* platform colour themes */
+  .mcp-plat-card.pc-shopee   .mcp-plat-card-hdr{background:#FFF0EE;border-bottom-color:#EE4D2D40}
+  .mcp-plat-card.pc-tiktok   .mcp-plat-card-hdr{background:#F5F5F5;border-bottom-color:#44444430}
+  .mcp-plat-card.pc-facebook .mcp-plat-card-hdr{background:#EEF4FF;border-bottom-color:#1877F230}
+  .mcp-plat-card.pc-shopee   {border-top:3px solid var(--shopee)}
+  .mcp-plat-card.pc-tiktok   {border-top:3px solid #444}
+  .mcp-plat-card.pc-facebook {border-top:3px solid var(--facebook)}
+
+  /* shift item inside card */
+  .mcp-shift-item{padding:6px 4px;border-bottom:1px solid var(--light)}
+  .mcp-shift-item:last-child{border-bottom:none}
+  .mcp-shift-item-name{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px;display:flex;align-items:center;gap:4px}
+
+  /* legacy — keep for backward compat */
+  .mcp-plat-section{margin-bottom:12px}
+  .mcp-plat-label{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+  .mcp-shift-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--light)}
+  .mcp-shift-row:last-child{border-bottom:none}
+  .mcp-shift-name{font-size:12px;font-weight:600;color:var(--navy);min-width:130px;flex-shrink:0}
+  .mcp-shift-mc{font-size:12px;font-weight:700;padding:2px 10px;border-radius:20px;background:var(--light);color:var(--navy)}
+  .mcp-shift-mc.unassigned{color:#BBB;background:#F7F7F7;font-weight:400}
+  .mcp-add-btn{padding:3px 10px;background:var(--teal);color:white;border:none;border-radius:4px;font-size:11px;font-weight:700;cursor:pointer;transition:.2s}
+  .mcp-add-btn:hover{background:#16A085}
+  .mcp-remove-btn{padding:3px 8px;background:transparent;color:var(--red);border:1px solid var(--red);border-radius:4px;font-size:10px;cursor:pointer;transition:.2s}
+  .mcp-remove-btn:hover{background:var(--red);color:white}
+  .mcp-pva-match{color:var(--green);font-weight:700}
+  .mcp-pva-miss{color:var(--red);font-weight:700}
+  .mcp-pva-noplan{color:var(--gray)}
+
+  #mcp-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px}
+  #mcp-modal-overlay.hidden{display:none}
+  .mcp-modal{background:white;border-radius:14px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 16px 48px rgba(0,0,0,.3);padding:24px}
+  .mcp-modal h3{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:4px}
+  .mcp-modal-sub{font-size:11px;color:var(--gray);margin-bottom:20px}
+  .mcp-modal-step{margin-bottom:16px}
+  .mcp-modal-step-label{font-size:11px;font-weight:700;color:var(--navy);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .mcp-step-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--teal);color:white;font-size:10px;font-weight:800;flex-shrink:0}
+  .mcp-mc-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .mcp-mc-chip{padding:5px 12px;border-radius:20px;border:2px solid;background:white;cursor:pointer;font-size:12px;font-weight:600;transition:.2s}
+  .mcp-mc-chip.active{color:white!important}
+  .mcp-plat-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .mcp-plat-chip{padding:5px 12px;border-radius:20px;border:1.5px solid var(--border);background:white;cursor:pointer;font-size:12px;font-weight:600;color:var(--navy);transition:.2s}
+  .mcp-plat-chip.ap-Shopee{border-color:var(--shopee);background:var(--shopee);color:white}
+  .mcp-plat-chip.ap-TikTok{border-color:#444;background:#444;color:white}
+  .mcp-plat-chip.ap-Facebook{border-color:var(--facebook);background:var(--facebook);color:white}
+  .mcp-type-chip.ap-Live{border-color:var(--red);background:var(--red);color:white}
+  .mcp-type-chip.ap-Rerun{border-color:#6C757D;background:#6C757D;color:white}
+  .mcp-shift-type-row{display:flex;align-items:center;gap:6px;padding:3px 0}
+  .mcp-type-label{font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;white-space:nowrap;flex-shrink:0}
+  .mcp-type-label.live{background:#FDEDEC;color:var(--red)}
+  .mcp-type-label.rerun{background:#EAECEE;color:#555}
+  .mcp-shift-checks{display:flex;flex-direction:column;gap:5px;max-height:180px;overflow-y:auto}
+  .mcp-shift-check{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;border:1.5px solid var(--light);cursor:pointer;transition:.15s}
+  .mcp-shift-check:hover{border-color:var(--teal)}
+  .mcp-shift-check input[type=checkbox]{accent-color:var(--teal);width:14px;height:14px;cursor:pointer}
+  .mcp-shift-check label{font-size:12px;font-weight:600;color:var(--navy);cursor:pointer;flex:1}
+  .mcp-date-range{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .mcp-date-range input{flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font);outline:none;transition:.2s;min-width:120px}
+  .mcp-date-range input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(26,188,156,.15)}
+  .mcp-modal-actions{display:flex;gap:8px;margin-top:16px}
+  .mcp-btn-save{flex:1;padding:10px;background:var(--teal);color:white;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;transition:.2s}
+  .mcp-btn-save:hover{background:#16A085}
+  .mcp-btn-cancel{padding:10px 18px;background:var(--light);color:var(--navy);border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer}
+
+  /* ===== REQ-02: Required Field Styles ===== */
+  .form-group.req label { font-weight: 600; }
+  .req-asterisk { color: #E53E3E; font-weight: 700; margin-left: 2px; }
+  .form-group.req input.req-empty,
+  .form-group.req select.req-empty { border: 1.5px solid #E53E3E !important; background: #FFF5F5 !important; }
+  .form-group.req input.req-filled,
+  .form-group.req select.req-filled { border: 1.5px solid #48BB78 !important; background: #FFFFFF !important; }
+  .form-group.req input.req-invalid,
+  .form-group.req select.req-invalid { border: 2px solid #E53E3E !important; background: #FFF5F5 !important; animation: shake .35s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-5px)} 40%,80%{transform:translateX(5px)} }
+  .field-error { color: #E53E3E; font-size: 0.75rem; margin-top: 3px; display: none; }
+  .field-error.visible { display: block; }
+
+  /* ===== REQ-03: PVA Advanced Filter ===== */
+  .pva-filter-panel { background: #F7F9FC; border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; border: 1px solid #E0E6ED; }
+  .pva-filter-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .pva-filter-row:last-child { margin-bottom: 0; }
+  .pva-filter-label { font-weight: 700; color: var(--navy); font-size: 11px; white-space: nowrap; min-width: 52px; }
+  .pva-date-input { padding: 5px 8px; border: 1.5px solid var(--border); border-radius: 5px; font-size: 11px; font-family: var(--font); outline: none; }
+  .pva-date-input:focus { border-color: var(--teal); }
+  .pva-preset-btn { padding: 3px 10px; border: 1.5px solid var(--border); background: white; border-radius: 14px; font-size: 10px; font-weight: 600; cursor: pointer; color: var(--navy); transition: .2s; white-space: nowrap; }
+  .pva-preset-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .pva-preset-btn.pva-active { background: var(--teal); border-color: var(--teal); color: white; }
+  .pva-filter-select { padding: 5px 8px; border: 1.5px solid var(--border); border-radius: 5px; font-size: 11px; font-family: var(--font); outline: none; background: white; cursor: pointer; }
+  .pva-filter-select:focus { border-color: var(--teal); }
+  .pva-check-group { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pva-check-item { display: flex; align-items: center; gap: 4px; font-size: 11px; cursor: pointer; padding: 2px 7px; border: 1px solid var(--border); border-radius: 12px; background: white; transition: .2s; white-space: nowrap; }
+  .pva-check-item:hover { border-color: var(--teal); }
+  .pva-check-item input { accent-color: var(--teal); cursor: pointer; }
+  .pva-count-badge { font-size: 11px; font-weight: 700; padding: 3px 12px; border-radius: 20px; background: #EBF5FB; color: #2980B9; white-space: nowrap; }
+  .pva-reset-btn { padding: 4px 12px; border: 1px solid var(--border); background: white; border-radius: 5px; font-size: 11px; cursor: pointer; color: var(--gray); transition: .2s; }
+  .pva-reset-btn:hover { border-color: var(--red); color: var(--red); }
+  /* PVA Summary Row */
+  #pva-summary-row td { background: var(--navy) !important; color: rgba(234,229,216,.9) !important; font-weight: 700 !important; border-bottom: none !important; font-size: 11px; }
+  /* PVA Status Badges */
+  .pva-s-match    { background:#D5F5E3;color:#1E8449;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;display:inline-block;white-space:nowrap }
+  .pva-s-timedelta{ background:#FEF9E7;color:#9A7D0A;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;display:inline-block;white-space:nowrap }
+  .pva-s-mcchange { background:#FDEDEC;color:#C0392B;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;display:inline-block;white-space:nowrap }
+  .pva-s-noactual { background:#F4F6F7;color:#7F8C8D;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;display:inline-block;white-space:nowrap }
+  .pva-s-noplan   { background:#FDEBD0;color:#A04000;padding:2px 7px;border-radius:12px;font-size:10px;font-weight:700;display:inline-block;white-space:nowrap }
+
+  /* ===== ADMIN PLAN ===== */
+  .adm-shift-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+  .adm-shift-btn{padding:6px 16px;border-radius:20px;border:2px solid var(--border);background:white;cursor:pointer;font-size:12px;font-weight:600;color:var(--navy);transition:.2s}
+  .adm-shift-btn.active{background:var(--teal);border-color:var(--teal);color:white}
+  .adm-shift-btn:hover:not(.active){border-color:var(--teal);color:var(--teal)}
+  .adm-day-shifts{display:flex;gap:3px;margin-top:3px}
+  .adm-shift-dot{flex:1;height:5px;border-radius:3px;background:#E8E8E8}
+  .adm-shift-dot.assigned{background:#27AE6070}
+  .adm-shift-dot.on-time{background:#27AE60}
+  .adm-shift-dot.late{background:#E74C3C}
+  .adm-shift-row{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--light);flex-wrap:wrap}
+  .adm-shift-row:last-child{border-bottom:none}
+  .adm-shift-label-col{min-width:90px;flex-shrink:0}
+  .adm-shift-label{font-size:12px;font-weight:700;color:var(--navy)}
+  .adm-shift-time{font-size:10px;color:var(--gray)}
+  .adm-name-badge{font-size:12px;font-weight:700;padding:3px 12px;border-radius:20px;background:#E8F8F5;color:#27AE60}
+  .adm-name-badge.unassigned{background:#F7F7F7;color:#BBB;font-weight:400}
+  .adm-ontime-btn{font-size:10px;font-weight:700;padding:3px 10px;border-radius:10px;cursor:pointer;border:1.5px solid transparent;transition:.2s}
+  .adm-ontime-btn.pending{background:#F0F0F0;color:#999;border-color:#DDD}
+  .adm-ontime-btn.on-time{background:#D5F5E3;color:#27AE60;border-color:#A9DFBF}
+  .adm-ontime-btn.late{background:#FDEDEC;color:#E74C3C;border-color:#F5B7B1}
+  .adm-sum-table{width:100%;border-collapse:collapse;font-size:13px}
+  .adm-sum-table th{text-align:left;padding:8px 10px;color:var(--gray);font-weight:600;border-bottom:2px solid var(--light)}
+  .adm-sum-table td{padding:8px 10px;border-bottom:1px solid var(--light)}
+  .adm-sum-table tbody tr:last-child td{border-bottom:none}
+  /* ===== COST CONFIG ===== */
+  .cost-cfg-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--light);flex-wrap:wrap}
+  .cost-cfg-row:last-child{border-bottom:none}
+  .cost-cfg-lbl{font-size:12px;font-weight:600;color:var(--navy);min-width:160px;cursor:pointer}
+  .cost-cfg-inp{width:60px;padding:4px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-weight:700;text-align:right;font-family:var(--font);outline:none}
+  .cost-cfg-inp:focus{border-color:var(--teal)}
+  .cost-cfg-unit{font-size:11px;color:var(--gray);white-space:nowrap}
+  .cost-cfg-row input[type=checkbox]{accent-color:var(--teal);width:14px;height:14px;cursor:pointer;flex-shrink:0}
+  .cc-rate-section{padding:6px 0 8px 22px;border-left:2px solid var(--light);margin-left:7px}
+  .cc-rate-row{display:flex;align-items:center;gap:6px;padding:2px 0;font-size:12px}
+  .cc-rate-name{width:90px;padding:3px 6px;border:1.5px solid var(--border);border-radius:5px;font-size:12px;font-family:var(--font);outline:none}
+  .cc-rate-name:focus{border-color:var(--teal)}
+  .cc-del-btn{background:none;border:none;color:#E74C3C;cursor:pointer;font-size:16px;line-height:1;padding:0 2px}
+  .cc-del-btn:hover{color:#C0392B}
+  .card.profit{background:linear-gradient(135deg,#1ABC9C 0%,#148F77 100%)}
+  .card.profit .card-label,.card.profit .card-sub{color:rgba(255,255,255,.8)!important}
+  .card.profit .card-val{color:white!important}
+  .card.loss{background:linear-gradient(135deg,#E74C3C 0%,#C0392B 100%)}
+  .card.loss .card-label,.card.loss .card-sub{color:rgba(255,255,255,.8)!important}
+  .card.loss .card-val{color:white!important}
+  #adm-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px}
+  #adm-modal-overlay.hidden{display:none}
+  .mcp-modal-title{font-size:15px;font-weight:800;color:var(--navy);margin-bottom:16px}
+  .mcp-modal-body{margin-bottom:16px}
+  .mcp-modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;border-top:1px solid var(--light);padding-top:14px}
+  .mcp-form-row{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+  .mcp-form-label{font-size:11px;font-weight:700;color:var(--navy)}
+  .mcp-form-input{padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:var(--font);outline:none;width:100%;box-sizing:border-box}
+  .mcp-form-input:focus{border-color:var(--teal)}
+</style>
+</head>
+<body>
+
+<div id="login-overlay" class="hidden">
+  <div class="login-box">
+    <h2>🔒 กรุณาใส่รหัสผ่าน</h2>
+    <p>หน้านี้มีข้อมูลยอดขาย จำเป็นต้องยืนยันตัวตน</p>
+    <input type="password" id="login-pwd" placeholder="รหัสผ่าน" onkeypress="if(event.key === 'Enter') checkLogin()">
+    <div class="btn-group-login">
+      <button class="btn-login-cancel" onclick="cancelLogin()">ยกเลิก</button>
+      <button class="btn-login-submit" onclick="checkLogin()">ยืนยัน</button>
+    </div>
+    <div id="login-err">❌ รหัสผ่านไม่ถูกต้อง!</div>
+  </div>
+</div>
+
+<div class="loading-overlay hidden" id="loading-overlay">
+  <div style="width:36px;height:36px;border:3px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .8s linear infinite"></div>
+  <div class="lo-text" id="loading-text">กำลังโหลด...</div>
+</div>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <img src="uploads/New Muslin Profile Photo (1).jpg" alt="Muslin" class="topbar-logo" onerror="this.style.display='none'"/>
+    <div>
+      <h1>Live Stream Dashboard</h1>
+      <div class="sub">Muslin Pajamas · Shopee, TikTok &amp; Facebook</div>
+    </div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn" data-tab="overview" onclick="switchTab('overview',this)">Overview</button>
+    <button class="tab-btn" data-tab="mc" onclick="switchTab('mc',this)">MC Rank</button>
+    <button class="tab-btn" data-tab="shift" onclick="switchTab('shift',this)">Shift Plan</button>
+    <button class="tab-btn active" data-tab="entry" onclick="switchTab('entry',this)">กรอกข้อมูล</button>
+    <button class="tab-btn" data-tab="mcplan" onclick="switchTab('mcplan',this)">MC Plan</button>
+    <button class="tab-btn" data-tab="admin" onclick="switchTab('admin',this)">Admin</button>
+  </div>
+</div>
+
+<div class="sync-bar">
+  <div class="sync-status">
+    <div class="dot" id="conn-dot"></div>
+    <span id="conn-text">กำลังดึงข้อมูลระบบ...</span>
+    <span id="last-sync" style="margin-left:12px;opacity:.5"></span>
+  </div>
+  <div class="sync-actions">
+    <span id="entry-count-badge" style="opacity:.6"></span>
+    <button class="btn-sm" onclick="fetchData()" id="refresh-btn">Refresh</button>
+    <button class="btn-sm" onclick="toggleAutoRefresh()" id="auto-btn">Auto OFF</button>
+    <button class="btn-sm" onclick="lockAll()" id="lock-btn" style="display:none">🔒 ล็อค</button>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <span class="filter-bar-label">ช่วงเวลา</span>
+  <input type="date" id="filter-from" onchange="applyFilter()">
+  <span class="filter-sep">—</span>
+  <input type="date" id="filter-to" onchange="applyFilter()">
+  <button class="filter-apply" onclick="applyFilter()">Apply</button>
+  <button class="filter-preset fp-active" id="fp-all"      onclick="setPreset('all',this)">ทั้งหมด</button>
+  <button class="filter-preset"          id="fp-thisMonth" onclick="setPreset('thisMonth',this)">เดือนนี้</button>
+  <button class="filter-preset"          id="fp-lastMonth" onclick="setPreset('lastMonth',this)">เดือนก่อน</button>
+  <button class="filter-preset"          id="fp-last7"     onclick="setPreset('last7',this)">7 วันล่าสุด</button>
+  <button class="filter-preset"          id="fp-last30"    onclick="setPreset('last30',this)">30 วัน</button>
+  <span class="filter-count" id="filter-count"></span>
+</div>
+
+<div id="page-overview" class="page">
+  <div id="ov-plat-bar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:4px 0 10px">
+    <span style="font-size:12px;font-weight:600;color:var(--navy)">Platform:</span>
+    <div id="ov-plat-checks" style="display:flex;gap:14px;flex-wrap:wrap"></div>
+  </div>
+  <div class="card-row" id="summary-cards"></div>
+  <div class="panel"><div class="panel-title">💰 ยอดขายแยก Platform</div><div class="plat-row" id="platform-split"></div></div>
+  <div class="panel">
+    <div class="panel-title" style="cursor:pointer;user-select:none" onclick="toggleCostCfg()">
+      ⚙️ ตั้งค่าต้นทุน &amp; Margin
+      <span id="cc-server-badge" style="display:none;font-size:10px;background:#E8F8F5;color:var(--teal);padding:2px 8px;border-radius:10px;font-weight:600;margin-left:6px">📋 จาก Sheets</span>
+      <span id="cc-toggle-lbl" style="font-size:11px;color:var(--teal);font-weight:400">▼ ซ่อน</span>
+    </div>
+    <div id="cc-body">
+      <div class="cost-cfg-row">
+        <input type="checkbox" id="cc-prod-chk" onchange="updateCostConfig()">
+        <label class="cost-cfg-lbl" for="cc-prod-chk">ต้นทุนสินค้า (COGS)</label>
+        <input type="number" id="cc-prod-pct" class="cost-cfg-inp" value="40" min="0" max="100" step="1" onchange="updateCostConfig()">
+        <span class="cost-cfg-unit">%</span>
+      </div>
+      <div class="cost-cfg-row">
+        <input type="checkbox" id="cc-fee-chk" onchange="updateCostConfig()">
+        <label class="cost-cfg-lbl" for="cc-fee-chk">ค่าธรรมเนียม Platform</label>
+        <input type="number" id="cc-fee-pct" class="cost-cfg-inp" value="23" min="0" max="100" step="0.5" onchange="updateCostConfig()">
+        <span class="cost-cfg-unit">%</span>
+      </div>
+      <div class="cost-cfg-row">
+        <input type="checkbox" id="cc-ads-chk" onchange="updateCostConfig()">
+        <label class="cost-cfg-lbl" for="cc-ads-chk">ค่าโฆษณา (Ads)</label>
+        <input type="number" id="cc-ads-pct" class="cost-cfg-inp" value="15" min="0" max="100" step="0.5" onchange="updateCostConfig()">
+        <span class="cost-cfg-unit">%</span>
+      </div>
+      <div class="cost-cfg-row">
+        <input type="checkbox" id="cc-mc-chk" onchange="updateCostConfig()">
+        <label class="cost-cfg-lbl" for="cc-mc-chk">ค่า MC / Support</label>
+        <span class="cost-cfg-unit">฿/ชม. × ชั่วโมงจริง</span>
+      </div>
+      <div id="cc-mc-section" class="cc-rate-section" style="display:none">
+        <div id="cc-mc-rates-list"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap">
+          <button onclick="ccAddRate('mc')" style="font-size:11px;padding:3px 10px;background:#E8F8F5;color:var(--teal);border:1.5px solid var(--teal);border-radius:6px;cursor:pointer;font-weight:600">+ เพิ่ม MC</button>
+          <span class="cost-cfg-unit">Default: <input type="number" id="cc-mc-def" class="cost-cfg-inp" style="width:55px" value="500" min="0" step="50" onchange="updateCostConfig()"> ฿/ชม.</span>
+        </div>
+      </div>
+      <div class="cost-cfg-row">
+        <input type="checkbox" id="cc-admin-chk" onchange="updateCostConfig()">
+        <label class="cost-cfg-lbl" for="cc-admin-chk">ค่า Admin</label>
+        <input type="number" id="cc-admin-hrs" class="cost-cfg-inp" style="width:40px" value="8" min="1" max="24" onchange="updateCostConfig()">
+        <span class="cost-cfg-unit">ชม./กะ</span>
+      </div>
+      <div id="cc-admin-section" class="cc-rate-section" style="display:none">
+        <div id="cc-admin-rates-list"></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap">
+          <button onclick="ccAddRate('admin')" style="font-size:11px;padding:3px 10px;background:#E8F8F5;color:var(--teal);border:1.5px solid var(--teal);border-radius:6px;cursor:pointer;font-weight:600">+ เพิ่ม Admin</button>
+          <span class="cost-cfg-unit">Default: <input type="number" id="cc-admin-def" class="cost-cfg-inp" style="width:55px" value="0" min="0" step="50" onchange="updateCostConfig()"> ฿/ชม.</span>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--gray);display:flex;gap:16px;flex-wrap:wrap">
+        <span>Margin สุทธิ ≈ <b id="cc-net-margin" style="color:var(--teal)">—</b>% ต่อยอดขาย</span>
+        <span id="cc-mc-note" style="display:none;color:var(--teal)">+ MC รายคน ฿/ชม.</span>
+        <span id="cc-admin-note" style="display:none;color:var(--teal)">+ Admin รายคน ฿/ชม.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      <span class="panel-title" style="margin:0">🗓️ Sales Heatmap</span>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="mcp-month-nav" style="padding:3px 10px;font-size:12px" onclick="ovHmChangeMonth(-1)">◀</button>
+        <span id="ov-hm-label" style="font-size:13px;font-weight:700;color:var(--navy);min-width:120px;text-align:center"></span>
+        <button class="mcp-month-nav" style="padding:3px 10px;font-size:12px" onclick="ovHmChangeMonth(1)">▶</button>
+      </div>
+    </div>
+    <div class="mcp-cal-grid" id="ov-hm-dow"></div>
+    <div class="mcp-cal-grid" id="ov-hm-grid" style="margin-top:4px"></div>
+    <div id="ov-hm-legend" style="display:flex;align-items:center;gap:6px;margin-top:10px;font-size:10px;color:var(--gray)"></div>
+  </div>
+  <div class="panel"><div class="panel-title">📋 Insight &amp; คำแนะนำ</div><div id="insights-box"></div></div>
+  <div class="panel">
+    <div class="panel-title">📝 บันทึกกะล่าสุด <span id="recent-count" style="font-size:11px;font-weight:400;color:var(--gray)"></span></div>
+    <div style="overflow-x:auto">
+      <table><thead><tr>
+        <th>วันที่</th><th>Platform</th><th>กะ</th><th>ประเภท</th>
+        <th>MC</th><th>Support</th><th>ยอดขาย (฿)</th><th>Orders</th><th>Peak Viewers</th>
+      </tr></thead><tbody id="recent-body"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<div id="page-mc" class="page">
+  <div class="two-col">
+    <div class="panel"><div class="panel-title">🏅 ยอดขายเฉลี่ยต่อกะ (บาท)</div><div class="bar-container" id="mc-bars"></div></div>
+    <div class="panel"><div class="panel-title">📊 MC Performance</div>
+      <table><thead><tr><th>Rank</th><th>MC</th><th>กะ</th><th>ยอดรวม (฿)</th><th>เฉลี่ย/กะ</th><th>กำไรสุทธิ</th><th>Margin%</th><th>Avg Viewers</th><th>Conv.%</th><th>AOV</th><th>สถานะ</th></tr></thead>
+      <tbody id="mc-body"></tbody></table>
+    </div>
+  </div>
+  <div class="panel"><div class="panel-title">🔍 MC แยก Platform</div>
+    <div style="overflow-x:auto">
+      <table><thead><tr>
+        <th>MC</th>
+        <th>Shopee เฉลี่ย</th><th title="Performance Index (เทียบ avg platform)">PI</th>
+        <th>TikTok เฉลี่ย</th><th title="Performance Index (เทียบ avg platform)">PI</th>
+        <th>Facebook เฉลี่ย</th><th title="Performance Index (เทียบ avg platform)">PI</th>
+        <th>Platform เด่น</th>
+      </tr></thead><tbody id="mc-platform-body"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<div id="page-shift" class="page">
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-size:12px;color:#888">แสดงผล:</span>
+      <button id="btn-shift-avg" class="metric-btn metric-active" onclick="setShiftMetric('avg')">📊 Average</button>
+      <button id="btn-shift-sum" class="metric-btn" onclick="setShiftMetric('sum')">∑ Sum</button>
+    </div>
+    <div style="width:1px;height:20px;background:#DDD"></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="font-size:12px;color:#888">จัดกลุ่มตาม:</span>
+      <button id="btn-group-shift" class="metric-btn metric-active" onclick="setShiftGroup('shift')">📋 กะที่</button>
+      <button id="btn-group-time"  class="metric-btn" onclick="setShiftGroup('time')">⏰ เวลา</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;padding:8px 12px;background:#F8F9FA;border-radius:10px">
+    <span style="font-size:12px;color:#888;flex-shrink:0">กรอง:</span>
+    <div id="shift-filter-checks" style="display:flex;gap:8px;flex-wrap:wrap;flex:1"></div>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button onclick="selectAllShiftFilters()" style="font-size:11px;padding:2px 10px;border-radius:12px;border:1px solid #DDD;background:#FFF;cursor:pointer;color:#555">ทั้งหมด</button>
+      <button onclick="clearShiftFilters()"     style="font-size:11px;padding:2px 10px;border-radius:12px;border:1px solid #DDD;background:#FFF;cursor:pointer;color:#E74C3C">ล้าง</button>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 3fr auto;gap:14px;align-items:start">
+    <div class="panel"><div class="panel-title"><span style="color:var(--shopee)">●</span> Shopee Heatmap</div><div id="shopee-heatmap"></div></div>
+    <div class="panel"><div class="panel-title"><span style="color:#555">●</span> TikTok Heatmap</div><div id="tiktok-heatmap"></div></div>
+    <div class="panel"><div class="panel-title"><span style="color:var(--facebook)">●</span> Facebook Heatmap</div><div id="facebook-heatmap"></div></div>
+  </div>
+  <div class="panel"><div class="panel-title">⚡ Live vs Re-run แนะนำแต่ละกะ</div>
+    <div style="overflow-x:auto">
+      <table style="margin:0 auto;text-align:center"><thead><tr>
+        <th>Platform</th><th id="th-group-col">📋 กะที่</th>
+        <th id="th-live-val">ยอดเฉลี่ย Live (฿)</th><th id="th-rerun-val">ยอดเฉลี่ย Re-run (฿)</th><th>% ต่าง</th><th>แนะนำ</th>
+      </tr></thead><tbody id="shift-body"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<div id="page-entry" class="page active">
+
+  <!-- ENTRY CALENDAR PANEL -->
+  <div class="panel">
+    <div class="panel-title">📅 Entry Coverage Calendar
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="mcp-month-nav" onclick="entCalChangeMonth(-1)" style="padding:3px 10px;font-size:12px">◀</button>
+        <span id="ent-cal-month-label" style="font-size:13px;font-weight:700;min-width:140px;text-align:center"></span>
+        <button class="mcp-month-nav" onclick="entCalChangeMonth(1)" style="padding:3px 10px;font-size:12px">▶</button>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--gray);margin-bottom:8px" id="ent-cal-summary"></div>
+    <div class="mcp-cal-grid" id="ent-cal-dow"></div>
+    <div class="mcp-cal-grid" id="ent-cal-grid" style="margin-top:4px"></div>
+  </div>
+
+  <!-- DAILY STATUS PANEL -->
+  <div class="panel">
+    <div class="panel-title">📅 สถานะกะประจำวัน
+      <span id="daily-filled-badge" style="font-size:11px;font-weight:400;padding:2px 10px;border-radius:20px;background:#EEE;color:#666"></span>
+    </div>
+    <div class="daily-nav">
+      <button class="day-nav-btn" onclick="changeEntryDate(-1)">◀ วันก่อน</button>
+      <input type="date" id="entry-date-nav" class="day-date-input" onchange="onEntryDateChange()">
+      <button class="day-nav-btn" onclick="changeEntryDate(1)">วันถัดไป ▶</button>
+      <button class="day-nav-btn" onclick="changeEntryDate(0)" style="border-color:var(--teal);color:var(--teal)">📍 วันนี้</button>
+    </div>
+    <div id="daily-platform-sections"></div>
+  </div>
+
+  <!-- FORM PANEL -->
+  <div class="panel" id="entry-form-panel">
+    <div class="panel-title">✏️ กรอกข้อมูลกะ
+      <span id="save-mode-badge" style="font-size:10px;font-weight:400;padding:2px 8px;border-radius:20px;background:#D5F5E3;color:#1E8449">บันทึกไป Google Sheets</span>
+    </div>
+    <div id="form-locked-info" style="display:none" class="form-locked-header">
+      <span style="font-size:12px;color:var(--navy);font-weight:600">กรอกกะ:</span>
+      <span id="locked-date-tag" class="locked-tag" style="background:#EBF5FB;color:#154360"></span>
+      <span id="locked-platform-tag" class="locked-tag"></span>
+      <span id="locked-shift-tag" class="locked-tag" style="background:#F0F7F4;color:var(--navy)"></span>
+      <button onclick="unlockForm()" style="margin-left:auto;font-size:11px;padding:3px 10px;border:1px solid var(--border);background:white;border-radius:4px;cursor:pointer;color:var(--gray)">✎ กรอกอิสระ</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group" id="fg-date"><label>วันที่</label><input type="date" id="f-date"></div>
+      <div class="form-group" id="fg-platform"><label>แพลตฟอร์ม</label>
+        <select id="f-platform" onchange="updateShifts()">
+          <option value="">-- กำลังโหลด --</option>
+        </select>
+      </div>
+      <div class="form-group" id="fg-shift"><label>กะ</label>
+        <select id="f-shift" onchange="onShiftChange()"><option value="">-- เลือกแพลตฟอร์มก่อน --</option></select>
+      </div>
+      <div class="form-group" id="fg-start-time"><label>เวลาเริ่มไลฟ์</label>
+        <input type="time" id="f-start-time" step="900">
+      </div>
+      <div class="form-group"><label>ประเภท</label>
+        <select id="f-type" onchange="toggleMC()">
+          <option value="">-- กำลังโหลด --</option>
+        </select>
+      </div>
+      <div class="form-group req" id="mc-group"><label>ชื่อ MC <span class="req-asterisk">*</span></label>
+        <select id="f-mc" class="req-empty">
+          <option value="">-- กำลังโหลด --</option>
+        </select>
+        <div class="field-error" id="err-mc">กรุณาเลือก MC</div>
+      </div>
+      <div class="form-group req"><label>Support 1 <span class="req-asterisk">*</span></label>
+        <select id="f-s1" class="req-empty">
+          <option value="">-- กำลังโหลด --</option>
+        </select>
+        <div class="field-error" id="err-s1">กรุณาเลือก Support 1</div>
+      </div>
+      <div class="form-group"><label>Support 2</label>
+        <select id="f-s2">
+          <option value="">-- กำลังโหลด --</option>
+        </select>
+      </div>
+      <div class="form-group req"><label>ยอดขาย (บาท) <span class="req-asterisk">*</span></label>
+        <input type="number" id="f-sales" class="req-empty" placeholder="0" min="0">
+        <div class="field-error" id="err-sales">กรุณากรอกยอดขาย</div>
+      </div>
+      <div class="form-group"><label>จำนวนออเดอร์</label><input type="number" id="f-orders" placeholder="0" min="0"></div>
+      <div class="form-group"><label>Peak Viewers</label><input type="number" id="f-viewers" placeholder="0" min="0"></div>
+      <div class="form-group req"><label>ระยะเวลาจริง (ชม.) <span class="req-asterisk">*</span></label>
+        <input type="number" id="f-hours" class="req-empty" placeholder="4.0" step="0.5" min="0">
+        <div class="field-error" id="err-hours">กรุณากรอกชั่วโมงไลฟ์</div>
+      </div>
+      <div class="form-group" id="fg-shift-variant"><label>Shift Variant</label>
+        <select id="f-shift-variant" onchange="onVariantChange()">
+          <option value="ปกติ">ปกติ</option>
+          <option value="เริ่มช้า">⏰ เริ่มช้า</option>
+          <option value="OT">⏱ OT</option>
+          <option value="เริ่มช้า + OT">⏱ เริ่มช้า + OT</option>
+          <option value="Ad-hoc">⚡ Ad-hoc (นอกแผน)</option>
+          <option value="ยกเลิก">❌ ยกเลิก</option>
+        </select>
+      </div>
+      <div class="form-group" id="fg-promo-used"><label>โปรโมชัน</label>
+        <select id="f-promo-used">
+          <option value="ไม่มี">ไม่มี</option>
+          <option value="Flash Sale">Flash Sale</option>
+          <option value="Shopee Voucher">Shopee Voucher</option>
+          <option value="TikTok Coins Promo">TikTok Coins Promo</option>
+          <option value="Facebook Ad Boost">Facebook Ad Boost</option>
+          <option value="ลดราคาสินค้า">ลดราคาสินค้า</option>
+          <option value="Bundle Deal">Bundle Deal</option>
+          <option value="อื่นๆ">อื่นๆ</option>
+        </select>
+      </div>
+      <div class="form-group" id="fg-technical-issues"><label>ปัญหาเทคนิค</label>
+        <select id="f-technical-issues">
+          <option value="ไม่มีปัญหา">ไม่มีปัญหา</option>
+          <option value="สตรีมหลุด">สตรีมหลุด</option>
+          <option value="เสียงมีปัญหา">เสียงมีปัญหา</option>
+          <option value="ภาพไม่คม">ภาพไม่คม</option>
+          <option value="Internet ช้า">Internet ช้า</option>
+          <option value="อุปกรณ์มีปัญหา">อุปกรณ์มีปัญหา</option>
+        </select>
+      </div>
+      <div class="form-group"><label>สินค้า Hero (ถ้ามี)</label><input type="text" id="f-hero-products" placeholder="เช่น ชุดนอน Premium, Set A"></div>
+      <div class="form-group"><label>สาเหตุยอดต่ำ</label>
+        <select id="f-reason">
+          <option value="">-- กำลังโหลด --</option>
+        </select>
+      </div>
+      <div class="form-group wide"><label>หมายเหตุ</label><textarea id="f-note" rows="2" placeholder="บันทึกเพิ่มเติม..."></textarea></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-save" id="save-btn" onclick="addEntry()">💾 บันทึก</button>
+      <button class="btn" style="background:var(--light);color:var(--navy)" onclick="clearForm()">🔄 ล้างฟอร์ม</button>
+      <button class="btn" style="background:#3498DB;color:white" onclick="exportCSV()">📥 Export CSV</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">📋 ข้อมูลทั้งหมด (<span id="entry-count">0</span> รายการ)</div>
+    <div style="overflow-x:auto">
+      <table><thead><tr>
+        <th>วันที่</th><th>Platform</th><th>กะ</th><th>ประเภท</th>
+        <th>MC</th><th>S1</th><th>ยอดขาย (฿)</th><th>Orders</th><th>Viewers</th><th>฿/ชม.</th><th>ลบ</th>
+      </tr></thead><tbody id="entry-body"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MC PLAN PAGE ===== -->
+<div id="page-mcplan" class="page">
+  <div class="panel">
+    <div class="mcp-cal-header">
+      <button class="mcp-month-nav" onclick="mcpChangeMonth(-1)">◀</button>
+      <div class="mcp-month-label" id="mcp-month-label"></div>
+      <button class="mcp-month-nav" onclick="mcpChangeMonth(1)">▶</button>
+      <button class="btn btn-save" style="margin-left:auto" onclick="openMcpModal()">+ กำหนด MC</button>
+    </div>
+    <div class="mcp-cal-grid" id="mcp-cal-dow"></div>
+    <div class="mcp-cal-grid" id="mcp-cal-grid" style="margin-top:4px"></div>
+  </div>
+
+  <div class="panel" id="mcp-detail-panel" style="display:none">
+    <div class="mcp-detail-title">
+      <span id="mcp-detail-title-text">รายละเอียดวันที่ —</span>
+      <button class="btn btn-save" style="font-size:11px;padding:5px 12px" onclick="openMcpModal(mcpSelectedDate)">+ เพิ่ม MC วันนี้</button>
+    </div>
+    <div id="mcp-detail-body"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">📊 Plan vs Actual
+      <span id="pva-count-info" style="font-size:11px;font-weight:400;color:var(--gray)"></span>
+    </div>
+
+    <!-- REQ-03: Advanced Filter Bar -->
+    <div class="pva-filter-panel">
+      <!-- Date range row -->
+      <div class="pva-filter-row">
+        <span class="pva-filter-label">📅 วันที่</span>
+        <input type="date" id="pva-from" class="pva-date-input" onchange="pvApplyFilter()">
+        <span style="color:var(--gray);font-size:13px">—</span>
+        <input type="date" id="pva-to" class="pva-date-input" onchange="pvApplyFilter()">
+        <button class="pva-preset-btn" id="pvap-7d"  onclick="pvSetPreset('7d',this)">7 วัน</button>
+        <button class="pva-preset-btn pva-active" id="pvap-30d" onclick="pvSetPreset('30d',this)">30 วัน</button>
+        <button class="pva-preset-btn" id="pvap-tm"  onclick="pvSetPreset('thisMonth',this)">เดือนนี้</button>
+        <button class="pva-preset-btn" id="pvap-lm"  onclick="pvSetPreset('lastMonth',this)">เดือนที่แล้ว</button>
+      </div>
+      <!-- Platform + กะ row -->
+      <div class="pva-filter-row">
+        <span class="pva-filter-label">Platform</span>
+        <div class="pva-check-group" id="pva-platform-checks">
+          <label class="pva-check-item"><input type="checkbox" value="Shopee"   onchange="pvApplyFilter()" checked> Shopee</label>
+          <label class="pva-check-item"><input type="checkbox" value="TikTok"   onchange="pvApplyFilter()" checked> TikTok</label>
+          <label class="pva-check-item"><input type="checkbox" value="Facebook" onchange="pvApplyFilter()" checked> Facebook</label>
+        </div>
+        <span class="pva-filter-label" style="margin-left:6px">กะ</span>
+        <div class="pva-check-group" id="pva-shift-checks">
+          <!-- filled dynamically -->
+        </div>
+      </div>
+      <!-- MC + Status + Actions row -->
+      <div class="pva-filter-row">
+        <span class="pva-filter-label">MC</span>
+        <select id="pva-mc-filter" class="pva-filter-select" onchange="pvApplyFilter()">
+          <option value="">ทั้งหมด</option>
+        </select>
+        <span class="pva-filter-label" style="margin-left:6px">สถานะ</span>
+        <select id="pva-status-filter" class="pva-filter-select" onchange="pvApplyFilter()">
+          <option value="all">ทั้งหมด</option>
+          <option value="mismatch">Plan ≠ Actual เท่านั้น</option>
+          <option value="match">Plan = Actual เท่านั้น</option>
+        </select>
+        <button class="pva-reset-btn" onclick="pvResetFilters()">ล้าง Filter</button>
+        <span class="pva-count-badge" id="pva-count-badge">0 รายการ</span>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div style="overflow-x:auto">
+      <table id="pva-table">
+        <thead><tr>
+          <th>วันที่</th>
+          <th>Platform</th>
+          <th>กะ</th>
+          <th>MC (Plan)</th>
+          <th>MC (Actual)</th>
+          <th>เวลา (Plan)</th>
+          <th>เวลา (Actual)</th>
+          <th>ชม.</th>
+          <th>ยอดขาย (฿)</th>
+          <th>Orders</th>
+          <th>SPH</th>
+          <th>สถานะ</th>
+        </tr></thead>
+        <tbody id="pva-body"></tbody>
+        <tfoot>
+          <tr id="pva-summary-row">
+            <td colspan="7" style="text-align:right">รวม / เฉลี่ย →</td>
+            <td id="pva-sum-hours">—</td>
+            <td id="pva-sum-sales">—</td>
+            <td id="pva-sum-orders">—</td>
+            <td id="pva-sum-sph">—</td>
+            <td id="pva-sum-count">—</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MC PLAN MODAL ===== -->
+<div id="mcp-modal-overlay" class="hidden" onclick="if(event.target===this)closeMcpModal()">
+  <div class="mcp-modal">
+    <h3>📅 กำหนด MC ล่วงหน้า</h3>
+    <div class="mcp-modal-sub">เลือก MC → Platform → กะ → ช่วงวันที่ แล้วกด Save</div>
+
+    <div class="mcp-modal-step">
+      <div class="mcp-modal-step-label"><span class="mcp-step-num">1</span> เลือก MC</div>
+      <div class="mcp-mc-chips" id="mcp-mc-chips"></div>
+    </div>
+
+    <div class="mcp-modal-step">
+      <div class="mcp-modal-step-label"><span class="mcp-step-num">2</span> เลือก Platform</div>
+      <div class="mcp-plat-chips">
+        <div class="mcp-plat-chip" data-plat="Shopee"   onclick="mcpSelectPlat(this)">🛒 Shopee</div>
+        <div class="mcp-plat-chip" data-plat="TikTok"   onclick="mcpSelectPlat(this)">🎵 TikTok</div>
+        <div class="mcp-plat-chip" data-plat="Facebook" onclick="mcpSelectPlat(this)">📘 Facebook</div>
+      </div>
+    </div>
+
+    <div class="mcp-modal-step">
+      <div class="mcp-modal-step-label"><span class="mcp-step-num">3</span> ประเภท</div>
+      <div class="mcp-plat-chips">
+        <div class="mcp-type-chip mcp-plat-chip" data-type="Live"   onclick="mcpSelectType(this)">🔴 Live</div>
+        <div class="mcp-type-chip mcp-plat-chip" data-type="Re-run" onclick="mcpSelectType(this)">🔄 Re-run</div>
+      </div>
+    </div>
+
+    <div class="mcp-modal-step">
+      <div class="mcp-modal-step-label">
+        <span class="mcp-step-num">4</span> เลือกกะ
+        <button onclick="mcpToggleAllShifts(true)"  style="font-size:10px;padding:2px 7px;border:1px solid var(--border);background:white;border-radius:4px;cursor:pointer;margin-left:auto">เลือกทั้งหมด</button>
+        <button onclick="mcpToggleAllShifts(false)" style="font-size:10px;padding:2px 7px;border:1px solid var(--border);background:white;border-radius:4px;cursor:pointer">ล้าง</button>
+      </div>
+      <div class="mcp-shift-checks" id="mcp-shift-checks">
+        <div style="color:var(--gray);font-size:12px;padding:8px">เลือก Platform ก่อน</div>
+      </div>
+    </div>
+
+    <div class="mcp-modal-step">
+      <div class="mcp-modal-step-label"><span class="mcp-step-num">5</span> เวลาเริ่ม &amp; ระยะเวลา</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:130px">
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--navy);margin-bottom:4px">เวลาเริ่ม (HH:MM)</label>
+          <input type="time" id="mcp-start-time" step="900" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font);outline:none">
+        </div>
+        <div style="flex:1;min-width:130px">
+          <label style="display:block;font-size:11px;font-weight:600;color:var(--navy);margin-bottom:4px">ระยะเวลา (ชม.)</label>
+          <input type="number" id="mcp-hours" value="4.0" step="0.5" min="0.5" max="12" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font);outline:none">
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--gray);margin-top:5px">เวลาเริ่มจะ auto-fill จาก ShiftDefaults เมื่อเลือก Platform + กะเดียว</div>
+    </div>
+
+    <div class="mcp-modal-step">
+      <div class="mcp-modal-step-label"><span class="mcp-step-num">6</span> ช่วงวันที่</div>
+      <div class="mcp-date-range">
+        <input type="date" id="mcp-date-from">
+        <span style="color:var(--gray)">—</span>
+        <input type="date" id="mcp-date-to">
+      </div>
+      <div id="mcp-date-preview" style="font-size:11px;color:var(--teal);margin-top:6px;font-weight:600"></div>
+    </div>
+
+    <div class="mcp-modal-actions">
+      <button class="mcp-btn-cancel" onclick="closeMcpModal()">ยกเลิก</button>
+      <button class="mcp-btn-save" onclick="saveMcpAssignment()">💾 บันทึกแผน</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ADMIN PLAN PAGE ===== -->
+<div id="page-admin" class="page">
+  <div class="panel">
+    <div class="mcp-cal-header">
+      <button class="mcp-month-nav" onclick="admChangeMonth(-1)">◀</button>
+      <div class="mcp-month-label" id="adm-month-label"></div>
+      <button class="mcp-month-nav" onclick="admChangeMonth(1)">▶</button>
+      <button class="btn btn-save" style="margin-left:auto" onclick="openAdmModal()">+ กำหนด Admin</button>
+    </div>
+    <div class="mcp-cal-grid" id="adm-cal-dow"></div>
+    <div class="mcp-cal-grid" id="adm-cal-grid" style="margin-top:4px"></div>
+  </div>
+
+  <div class="panel" id="adm-detail-panel" style="display:none">
+    <div class="mcp-detail-title">
+      <span id="adm-detail-title">📅 รายละเอียดวันที่ —</span>
+      <button class="btn btn-save" style="font-size:11px;padding:5px 12px" onclick="openAdmModal(admSelectedDate)">+ กำหนดวันนี้</button>
+    </div>
+    <div id="adm-detail-body"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">📊 สรุป Admin</div>
+    <div id="adm-summary"></div>
+  </div>
+</div>
+
+<!-- Admin Modal -->
+<div id="adm-modal-overlay" class="hidden" onclick="if(event.target===this)closeAdmModal()">
+  <div class="mcp-modal" style="max-width:420px">
+    <div class="mcp-modal-title">👤 กำหนด Admin</div>
+    <div class="mcp-modal-body">
+      <div class="mcp-form-row">
+        <label class="mcp-form-label">📅 วันที่</label>
+        <input type="date" id="adm-f-date" class="mcp-form-input">
+      </div>
+      <div class="mcp-form-row">
+        <label class="mcp-form-label">⏰ กะ</label>
+        <div class="adm-shift-btns" id="adm-shift-btns">
+          <button class="adm-shift-btn" data-shift="กะเช้า" onclick="admToggleShift(this)">กะเช้า 04:00–13:00</button>
+          <button class="adm-shift-btn" data-shift="กะเย็น" onclick="admToggleShift(this)">กะเย็น 15:00–00:00</button>
+        </div>
+      </div>
+      <div class="mcp-form-row">
+        <label class="mcp-form-label">👤 Admin</label>
+        <input type="text" id="adm-f-name" class="mcp-form-input" placeholder="ชื่อ Admin" list="adm-name-list" autocomplete="off">
+        <datalist id="adm-name-list"></datalist>
+      </div>
+      <div id="adm-form-err" style="color:#E74C3C;font-size:12px;display:none;margin-top:4px"></div>
+    </div>
+    <div class="mcp-modal-footer">
+      <button class="mcp-btn-cancel" onclick="closeAdmModal()">ยกเลิก</button>
+      <button class="mcp-btn-save" onclick="saveAdmAssignment()">💾 บันทึก</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== LOGIN / PIN SYSTEM ==========
+const DASHBOARD_PASSWORD = "1234";
+const LOCKED_TABS = ['overview', 'mcplan', 'admin']; // tabs ที่ต้อง PIN
+let pendingTabEl   = null;
+let pendingTabName = null;
+
+function checkLogin() {
+  const inputPwd = document.getElementById('login-pwd').value;
+  if (inputPwd === DASHBOARD_PASSWORD) {
+    sessionStorage.setItem('dashboard_auth_ok', 'true');
+    document.getElementById('login-overlay').classList.add('hidden');
+    document.getElementById('login-err').style.display = 'none';
+    document.getElementById('login-pwd').value = '';
+    document.getElementById('lock-btn').style.display = '';
+    if(pendingTabEl && pendingTabName) {
+      forceSwitchTab(pendingTabName, pendingTabEl);
+      pendingTabEl = null; pendingTabName = null;
+    }
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-pwd').select();
+  }
+}
+
+function cancelLogin() {
+  document.getElementById('login-overlay').classList.add('hidden');
+  document.getElementById('login-pwd').value = '';
+  document.getElementById('login-err').style.display = 'none';
+  pendingTabEl = null; pendingTabName = null;
+}
+
+function lockAll() {
+  sessionStorage.removeItem('dashboard_auth_ok');
+  document.getElementById('lock-btn').style.display = 'none';
+  if(LOCKED_TABS.includes(currentTab)){
+    const entryBtn = document.querySelector('.tab-btn[data-tab="entry"]');
+    if(entryBtn) forceSwitchTab('entry', entryBtn);
+  }
+  showToast('🔒 ล็อคแล้ว');
+}
+
+// ========== STATE & DYNAMIC DATA ==========
+const apiUrl  = 'https://script.google.com/macros/s/AKfycbwBL72qOfI9-E-jjfodHO8_-GVH9EzJHQy9JrvQXp_VRtdIeJg7kBKsKTNORdR5FqI/exec';
+let entries = [];
+let autoRefreshTimer = null;
+let autoRefreshOn = false;
+
+// ใช้ local time (ไม่ใช่ UTC) เพื่อป้องกัน timezone bug ในไทย (UTC+7)
+function localDateStr(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+let entryViewDate = localDateStr(new Date());
+let selectedExistingIdx = null;
+
+// เพิ่มตัวแปร Facebook Shifts
+let shopeeShifts = [];
+let tiktokShifts = [];
+let facebookShifts = [];
+let MC_COLORS = {};
+let shiftDefaults = []; // REQ-01: [{ platform, shift, start_time }]
+
+// REQ-03: PVA filter state
+let pvFrom = '';
+let pvTo   = '';
+const PVA_TIME_THRESHOLD = 15; // minutes
+let pvShiftChecksBuilt = false;
+
+// ========== MC PLAN STATE ==========
+const MCP_PLAN_KEY = 'mp_mc_plans_v1';
+let mcpPlans = [];
+let mcpViewYear  = new Date().getFullYear();
+let mcpViewMonth = new Date().getMonth(); // 0-based
+let mcpSelectedDate = null;
+function mcpLoadPlans(){ try{ mcpPlans = JSON.parse(localStorage.getItem(MCP_PLAN_KEY)||'[]'); }catch(e){ mcpPlans=[]; } }
+function mcpSavePlans(){ localStorage.setItem(MCP_PLAN_KEY, JSON.stringify(mcpPlans)); }
+mcpLoadPlans();
+// modal state
+let mcpModalMC = null; let mcpModalPlat = null; let mcpModalType = null;
+
+const fmt = n => n ? n.toLocaleString('th-TH') : '-';
+const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
+function buildDropdown(elId, list, defaultText) {
+  const el = document.getElementById(elId);
+  if (!el || !list || list.length === 0) return;
+  el.innerHTML = `<option value="">${defaultText}</option>` + list.map(x => `<option value="${x}">${x}</option>`).join('');
+}
+
+// ========== LOCAL ENTRY CACHE (กันข้อมูลหาย เมื่อ Sheets ยัง lag) ==========
+const CACHE_KEY = 'mp_entry_cache_v1';
+
+function getCacheEntries(){ try{ return JSON.parse(localStorage.getItem(CACHE_KEY)||'[]'); }catch(e){ return []; } }
+
+function cacheEntry(entry){
+  const cache = getCacheEntries();
+  const key = c => `${c.date}|${c.platform}|${c.shift}`;
+  const idx = cache.findIndex(c => key(c) === key(entry));
+  const stamped = {...entry, _cachedAt: Date.now()}; // timestamp เพื่อ smart merge
+  if(idx >= 0) cache[idx] = stamped; else cache.push(stamped);
+  localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+}
+
+function uncacheEntry(date, platform, shift){
+  const cache = getCacheEntries().filter(c => !(c.date===date && c.platform===platform && c.shift===shift));
+  localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+}
+
+function mergeCache(){
+  const cache = getCacheEntries();
+  if(!cache.length) return;
+  const now = Date.now();
+  const FRESH_MS = 5 * 60 * 1000; // 5 นาที — ถ้าเพิ่งบันทึกและ server ยัง lag ให้แสดงไปก่อน
+  const remaining = [];
+  for(const ce of cache){
+    const serverHas = entries.some(e => e.date===ce.date && e.platform===ce.platform && e.shift===ce.shift);
+    if(serverHas){
+      // server confirm แล้ว — clear cache
+    } else {
+      const isFresh = ce._cachedAt && (now - ce._cachedAt) < FRESH_MS;
+      if(isFresh){
+        entries.push(ce);   // เพิ่งบันทึก server อาจยัง lag — แสดงไปก่อน
+        remaining.push(ce);
+      }
+      // ถ้าเก่ากว่า 5 นาที และ server ไม่มี = ถูกลบออกจาก Sheet แล้ว → drop
+    }
+  }
+  localStorage.setItem(CACHE_KEY, JSON.stringify(remaining));
+}
+
+// ========== DATE FILTER ==========
+function getFiltered(){
+  const from = document.getElementById('filter-from')?.value || '';
+  const to   = document.getElementById('filter-to')?.value   || '';
+  if(!from && !to) return entries;
+  return entries.filter(e => {
+    if(from && e.date < from) return false;
+    if(to   && e.date > to)   return false;
+    return true;
+  });
+}
+
+function applyFilter(){
+  updateFilterCount();
+  renderCurrentPage();
+}
+
+function setPreset(p, btn){
+  const today = new Date();
+  let from = '', to = '';
+  if(p === 'thisMonth'){
+    from = localDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+    to   = localDateStr(today);
+  } else if(p === 'lastMonth'){
+    from = localDateStr(new Date(today.getFullYear(), today.getMonth()-1, 1));
+    to   = localDateStr(new Date(today.getFullYear(), today.getMonth(), 0));
+  } else if(p === 'last7'){
+    const d = new Date(today); d.setDate(d.getDate()-6);
+    from = localDateStr(d); to = localDateStr(today);
+  } else if(p === 'last30'){
+    const d = new Date(today); d.setDate(d.getDate()-29);
+    from = localDateStr(d); to = localDateStr(today);
+  }
+  document.getElementById('filter-from').value = from;
+  document.getElementById('filter-to').value   = to;
+  document.querySelectorAll('.filter-preset').forEach(b => b.classList.remove('fp-active'));
+  if(btn) btn.classList.add('fp-active');
+  applyFilter();
+}
+
+function updateFilterCount(){
+  const f   = getFiltered();
+  const el  = document.getElementById('filter-count');
+  if(!el) return;
+  const total = entries.length;
+  if(!total){ el.textContent=''; return; }
+  if(f.length === total){
+    el.textContent = `${total} รายการ`;
+    el.classList.remove('filtered');
+  } else {
+    el.textContent = `กรอง ${f.length} / ${total} รายการ`;
+    el.classList.add('filtered');
+  }
+}
+
+// ========== FETCH FROM GOOGLE SHEETS ==========
+async function fetchData(){
+  if(!apiUrl){ updateConnStatus('no-config'); return; }
+  updateConnStatus('loading');
+  try {
+    // ล้าง stale local cache ก่อน fetch ทุกครั้ง (server คือ source of truth)
+    localStorage.removeItem(CACHE_KEY);
+    localStorage.removeItem(MCP_PLAN_KEY);
+
+    const res  = await fetch(apiUrl + '?t=' + Date.now());
+    const json = await res.json();
+    if(json.status !== 'ok') throw new Error(json.message);
+
+    entries = json.data || [];
+    // Normalize date + start_time: Sheets may return ISO strings
+    entries.forEach(e => {
+      // Normalize date: "2026-04-02T17:00:00.000Z" → "2026-04-02" (Bangkok local date)
+      if(e.date && e.date.includes('T')) e.date = localDateStr(new Date(e.date));
+      // Normalize start_time: "1899-12-30T07:30:00.000Z" → "07:30"
+      if(e.start_time) e.start_time = normalizeTimeStr(e.start_time);
+    });
+
+    // sync MC Plans จาก Sheets
+    if(json.mcPlans !== undefined){
+      mcpPlans = json.mcPlans;
+      mcpPlans.forEach(p => { if(p.start_time) p.start_time = normalizeTimeStr(p.start_time); });
+      mcpSavePlans();
+    }
+
+    // sync Admin Plans จาก Sheets (v4.0)
+    if(json.adminPlans !== undefined){
+      adminPlans = json.adminPlans;
+      admSavePlans();
+    }
+
+    // sync Cost Config จาก Sheets (v4.1) — server เป็น source of truth
+    if(json.config && typeof json.config === 'object'){
+      applyCostConfigFromServer(json.config);
+    }
+
+    // sync Rates จาก Sheets (v4.2) — server เป็น source of truth
+    if(json.rates && typeof json.rates === 'object'){
+      applyRatesFromServer(json.rates);
+    }
+
+    // จัดการข้อมูล Lists เพื่อยัดใส่ Dropdown (รับ Facebook มาด้วย)
+    if(json.lists) {
+      shopeeShifts = json.lists['Shift_Shopee'] || [];
+      tiktokShifts = json.lists['Shift_TikTok'] || [];
+      facebookShifts = json.lists['Shift_Facebook'] || []; // ดึงกะ Facebook
+
+      buildDropdown('f-platform', json.lists['Platform'], '-- เลือก --');
+      buildDropdown('f-type', json.lists['Type'], '-- เลือก --');
+      buildDropdown('f-mc', json.lists['MC_List'], '-- เลือก --');
+      buildDropdown('f-s1', json.lists['Support_List'], '-- เลือก --');
+      buildDropdown('f-s2', json.lists['Support_List'], '-- ไม่มี --');
+      buildDropdown('f-reason', json.lists['Reason_List'], '-- ไม่มี --');
+
+      const colorPalette = ["#3498DB", "#E67E22", "#E74C3C", "#9B59B6", "#1ABC9C", "#F1C40F", "#34495E", "#E84393", "#00CEC9"];
+      if (json.lists['MC_List']) {
+        MC_COLORS = {};
+        json.lists['MC_List'].forEach((mc, idx) => {
+          MC_COLORS[mc] = colorPalette[idx % colorPalette.length];
+        });
+      }
+
+      // REQ-01: Load ShiftDefaults for start_time auto-fill
+      shiftDefaults = [];
+      const sdPlats  = json.lists['ShiftDefault_Platform']  || [];
+      const sdShifts = json.lists['ShiftDefault_Shift']     || [];
+      const sdTimes  = json.lists['ShiftDefault_StartTime'] || [];
+      const sdLen = Math.min(sdPlats.length, sdShifts.length);
+      for (let i = 0; i < sdLen; i++) {
+        if (sdPlats[i] && sdShifts[i]) {
+          shiftDefaults.push({ platform: sdPlats[i], shift: sdShifts[i], start_time: normalizeTimeStr(sdTimes[i]) });
+        }
+      }
+
+      // REQ-03: Build PVA shift checkboxes after shifts loaded
+      pvBuildShiftChecks();
+      pvBuildMcFilter();
+
+      // Re-render calendar หลังโหลด shifts + plans ครบ (reqCount จะถูกต้อง)
+      renderMcpCalendar();
+    }
+
+    updateConnStatus('connected', entries.length);
+    updateFilterCount();
+    renderCurrentPage();
+    document.getElementById('last-sync').textContent = 'อัปเดต ' + new Date().toLocaleTimeString('th-TH');
+  } catch(err){
+    updateConnStatus('error');
+    showToast('❌ เชื่อมต่อไม่ได้: ' + err.message, true);
+  }
+  document.getElementById('refresh-btn').innerHTML = '🔄 Refresh';
+}
+
+// ========== POST TO GOOGLE SHEETS ==========
+// ส่งเป็น GET + query params เพราะ Apps Script อ่าน action/payload จาก e.parameter (URL)
+// ไม่ใช้ POST body เพราะ Google redirect ทำให้ body หาย
+async function postToSheets(action, payload){
+  if(!apiUrl) return false;
+  const _loadMsg = action==='add'?'กำลังบันทึก...':action==='delete'?'กำลังลบ...':action.startsWith('plan_')?'กำลังบันทึกแผน...':'กำลังดำเนินการ...';
+  showLoading(_loadMsg);
+  try {
+    const params = new URLSearchParams({
+      action,
+      payload: JSON.stringify(payload),
+      t: Date.now(),
+    });
+    const res  = await fetch(`${apiUrl}?${params}`, { redirect: 'follow' });
+    const json = await res.json();
+    hideLoading();
+    if(json.status !== 'ok') throw new Error(json.message);
+    return true;
+  } catch(err){
+    hideLoading();
+    showToast('❌ บันทึกไม่ได้: ' + err.message, true);
+    return false;
+  }
+}
+
+// ========== STATUS ==========
+function updateConnStatus(state, count){
+  const dot  = document.getElementById('conn-dot');
+  const text = document.getElementById('conn-text');
+  dot.className = 'dot';
+  if(state === 'connected'){
+    dot.classList.add('connected');
+    text.textContent = 'เชื่อมต่อ Google Sheets แล้ว';
+    document.getElementById('entry-count-badge').textContent = count + ' รายการ';
+  } else if(state === 'loading'){
+    dot.classList.add('loading');
+    text.textContent = 'กำลังโหลด...';
+  } else if(state === 'error'){
+    dot.classList.add('error');
+    text.textContent = 'เชื่อมต่อไม่ได้';
+  } else {
+    text.textContent = 'ยังไม่ได้เชื่อมต่อ';
+  }
+}
+
+
+function toggleAutoRefresh(){
+  autoRefreshOn = !autoRefreshOn;
+  const btn = document.getElementById('auto-btn');
+  if(autoRefreshOn){
+    btn.textContent = '⏱ Auto ON (5 นาที)';
+    btn.classList.add('active-btn');
+    autoRefreshTimer = setInterval(fetchData, 5 * 60 * 1000);
+  } else {
+    btn.textContent = '⏱ Auto OFF';
+    btn.classList.remove('active-btn');
+    clearInterval(autoRefreshTimer);
+  }
+}
+
+// ========== TABS ==========
+let currentTab = 'entry'; 
+
+function switchTab(name, el){
+  if (LOCKED_TABS.includes(name) && sessionStorage.getItem('dashboard_auth_ok') !== 'true') {
+    pendingTabEl   = el;
+    pendingTabName = name;
+    document.getElementById('login-overlay').classList.remove('hidden');
+    document.getElementById('login-pwd').focus();
+    return;
+  }
+  forceSwitchTab(name, el);
+}
+
+function forceSwitchTab(name, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+  currentTab = name;
+  renderCurrentPage();
+}
+
+function renderCurrentPage(){
+  if(currentTab==='overview') renderOverview();
+  else if(currentTab==='mc')  renderMC();
+  else if(currentTab==='shift') renderShift();
+  else if(currentTab==='entry') renderEntry();
+  else if(currentTab==='mcplan') renderMcPlan();
+  else if(currentTab==='admin') renderAdmin();
+}
+
+// ========== ADMIN PLAN ==========
+const ADMIN_PLAN_KEY = 'adm_plans_v1';
+const ADMIN_SHIFTS = [
+  { key:'กะเช้า', time:'04:00–13:00' },
+  { key:'กะเย็น', time:'15:00–00:00' },
+];
+let adminPlans = [];
+let admViewYear  = new Date().getFullYear();
+let admViewMonth = new Date().getMonth();
+let admSelectedDate = null;
+let admModalShifts  = new Set();
+
+function admLoadPlans(){ try{ adminPlans=JSON.parse(localStorage.getItem(ADMIN_PLAN_KEY)||'[]'); }catch(e){ adminPlans=[]; } }
+function admSavePlans(){ localStorage.setItem(ADMIN_PLAN_KEY, JSON.stringify(adminPlans)); }
+admLoadPlans();
+
+function renderAdmin(){
+  renderAdmCalendar();
+  if(admSelectedDate) renderAdmDayDetail(admSelectedDate);
+  renderAdmSummary();
+}
+
+function admChangeMonth(d){
+  admViewMonth+=d;
+  if(admViewMonth>11){ admViewMonth=0; admViewYear++; }
+  if(admViewMonth<0){ admViewMonth=11; admViewYear--; }
+  renderAdmCalendar();
+}
+
+function renderAdmCalendar(){
+  const MONTH_TH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const DOW_TH=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  const t=new Date(); const todayStr=localDateStr(t);
+  document.getElementById('adm-month-label').textContent=`${MONTH_TH[admViewMonth]} ${admViewYear+543}`;
+  const dowEl=document.getElementById('adm-cal-dow');
+  if(!dowEl.children.length) dowEl.innerHTML=DOW_TH.map(d=>`<div class="mcp-cal-dow">${d}</div>`).join('');
+  const firstDow=new Date(admViewYear,admViewMonth,1).getDay();
+  const daysInMonth=new Date(admViewYear,admViewMonth+1,0).getDate();
+  const mkDot=(plan)=>{
+    if(!plan) return `<div class="adm-shift-dot"></div>`;
+    if(plan.on_time===true)  return `<div class="adm-shift-dot on-time"></div>`;
+    if(plan.on_time===false) return `<div class="adm-shift-dot late"></div>`;
+    return `<div class="adm-shift-dot assigned"></div>`;
+  };
+  let html='';
+  for(let i=0;i<firstDow;i++) html+=`<div class="mcp-cal-day empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${admViewYear}-${String(admViewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dp=adminPlans.filter(p=>p.date===ds);
+    const morn=dp.find(p=>p.shift==='กะเช้า');
+    const eve=dp.find(p=>p.shift==='กะเย็น');
+    const cov=(morn?1:0)+(eve?1:0);
+    const covColor=cov===0?'#E0E0E0':cov<2?'#F39C12':'#27AE60';
+    html+=`<div class="mcp-cal-day${ds===todayStr?' today':''}${ds===admSelectedDate?' mcp-selected':''}" onclick="admClickDay('${ds}')">
+      <div class="mcp-cal-day-num">${d}</div>
+      <div class="mcp-cov-bar"><div class="mcp-cov-fill" style="width:${cov/2*100}%;background:${covColor}"></div></div>
+      <div class="mcp-cov-text">${cov>0?cov+'/2':''}</div>
+      <div class="adm-day-shifts">${mkDot(morn)}${mkDot(eve)}</div>
+    </div>`;
+  }
+  document.getElementById('adm-cal-grid').innerHTML=html;
+}
+
+function admClickDay(ds){
+  admSelectedDate=ds;
+  renderAdmCalendar();
+  renderAdmDayDetail(ds);
+}
+
+function renderAdmDayDetail(ds){
+  const [y,m,d]=ds.split('-');
+  const MONTH_S=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  document.getElementById('adm-detail-title').textContent=`📅 ${parseInt(d)} ${MONTH_S[parseInt(m)-1]} ${parseInt(y)+543}`;
+  document.getElementById('adm-detail-panel').style.display='block';
+  const dp=adminPlans.filter(p=>p.date===ds);
+  const html=ADMIN_SHIFTS.map(sh=>{
+    const plan=dp.find(p=>p.shift===sh.key);
+    const otBtn=plan
+      ? plan.on_time===true
+        ? `<button class="adm-ontime-btn on-time" onclick="admCycleOnTime('${ds}','${sh.key}')">✓ ตรงเวลา</button>`
+        : plan.on_time===false
+          ? `<button class="adm-ontime-btn late" onclick="admCycleOnTime('${ds}','${sh.key}')">✗ สาย</button>`
+          : `<button class="adm-ontime-btn pending" onclick="admCycleOnTime('${ds}','${sh.key}')">— ยังไม่บันทึก</button>`
+      : '';
+    const timeTag=plan?.actual_time?`<span style="font-size:10px;color:var(--gray)">⏱ ${plan.actual_time}</span>`:'';
+    return `<div class="adm-shift-row">
+      <div class="adm-shift-label-col">
+        <div class="adm-shift-label">${sh.key}</div>
+        <div class="adm-shift-time">${sh.time}</div>
+      </div>
+      ${plan
+        ?`<div class="adm-name-badge">${plan.admin_name}</div>${otBtn}${timeTag}
+           <button class="mcp-remove-btn" onclick="admRemovePlan('${ds}','${sh.key}')" style="margin-left:auto">✕</button>`
+        :`<div class="adm-name-badge unassigned">— ว่าง —</div>
+           <button class="mcp-add-btn" onclick="openAdmModal('${ds}','${sh.key}')" style="margin-left:auto">+</button>`
+      }
+    </div>`;
+  }).join('');
+  document.getElementById('adm-detail-body').innerHTML=html;
+}
+
+function admCycleOnTime(date,shift){
+  const plan=adminPlans.find(p=>p.date===date&&p.shift===shift);
+  if(!plan) return;
+  if(plan.on_time===null||plan.on_time===undefined) plan.on_time=true;
+  else if(plan.on_time===true) plan.on_time=false;
+  else plan.on_time=null;
+  admSavePlans();
+  renderAdmCalendar();
+  renderAdmDayDetail(date);
+  renderAdmSummary();
+  postToSheets('admin_plan_update', { date, shift, on_time: plan.on_time });
+}
+
+function admRemovePlan(date,shift){
+  adminPlans=adminPlans.filter(p=>!(p.date===date&&p.shift===shift));
+  admSavePlans();
+  renderAdmCalendar();
+  renderAdmDayDetail(date);
+  renderAdmSummary();
+  postToSheets('admin_plan_delete', { date, shift });
+}
+
+function renderAdmSummary(){
+  const names=[...new Set(adminPlans.map(p=>p.admin_name).filter(Boolean))].sort();
+  if(!names.length){
+    document.getElementById('adm-summary').innerHTML=`<div style="color:var(--gray);text-align:center;padding:20px">ยังไม่มีข้อมูล Admin</div>`;
+    return;
+  }
+  const rows=names.map(name=>{
+    const ps=adminPlans.filter(p=>p.admin_name===name);
+    const total=ps.length;
+    const recorded=ps.filter(p=>p.on_time!==null&&p.on_time!==undefined).length;
+    const onTime=ps.filter(p=>p.on_time===true).length;
+    const pct=recorded>0?Math.round(onTime/recorded*100):null;
+    const pc=pct===null?'var(--gray)':pct>=80?'#27AE60':pct>=50?'#F39C12':'#E74C3C';
+    return `<tr>
+      <td style="font-weight:700;color:var(--navy)">${name}</td>
+      <td style="text-align:center">${total}</td>
+      <td style="text-align:center">${onTime}/${recorded||'—'}</td>
+      <td style="text-align:center;font-weight:700;color:${pc}">${pct!==null?pct+'%':'—'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('adm-summary').innerHTML=`
+    <table class="adm-sum-table">
+      <thead><tr>
+        <th>Admin</th><th style="text-align:center">กะทั้งหมด</th>
+        <th style="text-align:center">ตรงเวลา</th><th style="text-align:center">% ตรงเวลา</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
+// Admin Modal
+function openAdmModal(date='', prefillShift=''){
+  admModalShifts = prefillShift ? new Set([prefillShift]) : new Set();
+  document.getElementById('adm-f-date').value = date || localDateStr(new Date());
+  document.getElementById('adm-f-name').value = '';
+  document.getElementById('adm-form-err').style.display='none';
+  const names=[...new Set(adminPlans.map(p=>p.admin_name).filter(Boolean))];
+  document.getElementById('adm-name-list').innerHTML=names.map(n=>`<option value="${n}">`).join('');
+  document.querySelectorAll('#adm-shift-btns .adm-shift-btn').forEach(btn=>{
+    btn.classList.toggle('active', admModalShifts.has(btn.dataset.shift));
+  });
+  document.getElementById('adm-modal-overlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('adm-f-name').focus(), 50);
+}
+
+function admToggleShift(btn){
+  const s=btn.dataset.shift;
+  if(admModalShifts.has(s)) admModalShifts.delete(s); else admModalShifts.add(s);
+  btn.classList.toggle('active', admModalShifts.has(s));
+}
+
+function closeAdmModal(){
+  document.getElementById('adm-modal-overlay').classList.add('hidden');
+}
+
+function saveAdmAssignment(){
+  const date=document.getElementById('adm-f-date').value;
+  const name=document.getElementById('adm-f-name').value.trim();
+  const errEl=document.getElementById('adm-form-err');
+  if(!date){ errEl.textContent='กรุณาเลือกวันที่'; errEl.style.display='block'; return; }
+  if(!admModalShifts.size){ errEl.textContent='กรุณาเลือกอย่างน้อย 1 กะ'; errEl.style.display='block'; return; }
+  if(!name){ errEl.textContent='กรุณาระบุชื่อ Admin'; errEl.style.display='block'; return; }
+  const plans=[];
+  admModalShifts.forEach(shift=>{
+    adminPlans=adminPlans.filter(p=>!(p.date===date&&p.shift===shift));
+    const p={ date, shift, admin_name:name, on_time:null, actual_time:'' };
+    adminPlans.push(p);
+    plans.push(p);
+  });
+  admSavePlans();
+  closeAdmModal();
+  admSelectedDate=date;
+  renderAdmCalendar();
+  renderAdmDayDetail(date);
+  renderAdmSummary();
+  showToast('✅ บันทึก Admin แล้ว');
+  postToSheets('admin_plan_add', { plans }); // sync to Sheets
+}
+
+// ========== OVERVIEW ==========
+function renderOverview(){
+  renderOvPlatFilter();
+  const E = getOvEntries();
+  const total   = E.reduce((a,e)=>a+e.sales,0);
+  const live    = E.filter(e=>e.type==='Live').reduce((a,e)=>a+e.sales,0);
+  const rerun   = E.filter(e=>e.type==='Re-run').reduce((a,e)=>a+e.sales,0);
+  const orders  = E.reduce((a,e)=>a+e.orders,0);
+  const viewers = E.reduce((a,e)=>a+e.viewers,0);
+  const hours   = E.reduce((a,e)=>a+(e.hours||0),0);
+  const avgPS   = E.length ? Math.round(total/E.length) : 0;
+  const convRate = (viewers>0 && orders>0) ? (orders/viewers*100).toFixed(1) : '—';
+  const aov      = orders>0 ? Math.round(total/orders) : 0;
+  const rph      = hours>0  ? Math.round(total/hours)  : 0;
+
+  const shop  = E.filter(e=>e.platform==='Shopee').reduce((a,e)=>a+e.sales,0);
+  const tikt  = E.filter(e=>e.platform==='TikTok').reduce((a,e)=>a+e.sales,0);
+  const face  = E.filter(e=>e.platform==='Facebook').reduce((a,e)=>a+e.sales,0);
+  const shopN = E.filter(e=>e.platform==='Shopee').length;
+  const tiktN = E.filter(e=>e.platform==='TikTok').length;
+  const faceN = E.filter(e=>e.platform==='Facebook').length;
+
+  initCostCfgUI();
+  const dateSet = new Set(E.map(e=>e.date));
+  const mcProfitTotal  = E.reduce((s,e)=>s+calcProfit(e),0);
+  const adminCostTotal = calcAdminCost(dateSet);
+  const profitTotal    = mcProfitTotal - adminCostTotal;
+  const marginPct      = hasCostConfig() && total ? (profitTotal/total*100).toFixed(1) : null;
+  const profitCls      = hasCostConfig() ? (profitTotal>=0?'profit':'loss') : '';
+
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="card"><div class="card-label">ยอดขายรวม</div><div class="card-val">฿${fmt(total)}</div><div class="card-sub">${E.length} กะ</div></div>
+    <div class="card green"><div class="card-label">ยอด Live</div><div class="card-val">฿${fmt(live)}</div><div class="card-sub">${E.filter(e=>e.type==='Live').length} กะ</div></div>
+    <div class="card orange"><div class="card-label">เฉลี่ย/กะ</div><div class="card-val">฿${fmt(avgPS)}</div><div class="card-sub">avg per shift</div></div>
+    ${hasCostConfig()?`<div class="card ${profitCls}"><div class="card-label">กำไรสุทธิ</div><div class="card-val">฿${fmt(profitTotal)}</div><div class="card-sub">Margin ${marginPct??'—'}%</div></div>`:''}
+    <div class="card shopee"><div class="card-label">Orders รวม</div><div class="card-val">${fmt(orders)}</div><div class="card-sub">ทุกกะ</div></div>
+    <div class="card blue"><div class="card-label">Conversion Rate</div><div class="card-val">${convRate}%</div><div class="card-sub">orders ÷ viewers</div></div>
+    <div class="card purple"><div class="card-label">AOV</div><div class="card-val">฿${fmt(aov)}</div><div class="card-sub">avg order value</div></div>
+    <div class="card"><div class="card-label">Revenue / ชม.</div><div class="card-val">฿${fmt(rph)}</div><div class="card-sub">${hours.toFixed(1)} ชม. รวม</div></div>
+  `;
+
+  document.getElementById('platform-split').innerHTML = `
+    <div class="plat-card plat-shopee">
+      <div class="pn">SHOPEE</div><div class="pv">฿${fmt(shop)}</div>
+      <div class="ps">${shopN} กะ | เฉลี่ย ฿${fmt(shopN?Math.round(shop/shopN):0)}/กะ</div>
+    </div>
+    <div class="plat-card plat-tiktok">
+      <div class="pn">TIKTOK</div><div class="pv">฿${fmt(tikt)}</div>
+      <div class="ps">${tiktN} กะ | เฉลี่ย ฿${fmt(tiktN?Math.round(tikt/tiktN):0)}/กะ</div>
+    </div>
+    <div class="plat-card plat-facebook">
+      <div class="pn">FACEBOOK</div><div class="pv">฿${fmt(face)}</div>
+      <div class="ps">${faceN} กะ | เฉลี่ย ฿${fmt(faceN?Math.round(face/faceN):0)}/กะ</div>
+    </div>
+  `;
+
+  const mcStats = getMCStats(E).sort((a,b)=>b.avgSales-a.avgSales);
+  const best = mcStats[0], worst = mcStats[mcStats.length-1];
+  let insight = '';
+  if(best) insight += `<div class="alert-box ag">✅ <b>${best.mc}</b> ยอดเฉลี่ย ฿${fmt(Math.round(best.avgSales))}/กะ — top performer</div>`;
+  if(worst&&worst.avgSales<20000&&worst.mc) insight += `<div class="alert-box aw">⚠️ <b>${worst.mc}</b> ยอดเฉลี่ยต่ำสุด (฿${fmt(Math.round(worst.avgSales))}/กะ) ควรตรวจสอบ</div>`;
+  const otCount = E.filter(e=>e.shift_variant==='OT'||e.shift_variant==='เริ่มช้า + OT').length;
+  if(otCount>0) insight += `<div class="alert-box ai">⏱ มี <b>${otCount}</b> กะ OT ในช่วงนี้</div>`;
+  if(!E.length) insight = '<div class="alert-box ai">ไม่มีข้อมูลในช่วงที่เลือก — ลองเปลี่ยน date range</div>';
+  document.getElementById('insights-box').innerHTML = insight;
+
+  renderOverviewHeatmap();
+
+  const recent = [...E].slice(-8).reverse();
+  document.getElementById('recent-count').textContent = `(${recent.length} รายการล่าสุด)`;
+  document.getElementById('recent-body').innerHTML = recent.map((e,i)=>`
+    <tr class="${i%2?'alt':''}">
+      <td>${e.date}</td>
+      <td><span class="badge badge-${e.platform.toLowerCase()}">${e.platform}</span></td>
+      <td style="font-size:10px">${e.shift}</td>
+      <td><span class="badge badge-${e.type==='Live'?'live':'rerun'}">${e.type}</span></td>
+      <td><b>${e.mc||'—'}</b></td>
+      <td style="font-size:10px">${[e.s1,e.s2].filter(Boolean).join(', ')||'—'}</td>
+      <td style="text-align:right"><b>฿${fmt(e.sales)}</b></td>
+      <td>${fmt(e.orders)}</td>
+      <td>${fmt(e.viewers)}</td>
+    </tr>`).join('');
+}
+
+// ========== COST CONFIG ==========
+const COST_CFG_KEY = 'cost_cfg_v2';
+let costConfig = null;
+let costCfgOpen = true;
+let ovPlatHide = new Set(); // platforms hidden in overview (empty = show all)
+
+function costCfgLoad(){
+  try{ costConfig = JSON.parse(localStorage.getItem(COST_CFG_KEY)); }catch(e){}
+  if(!costConfig) costConfig = {};
+  const d = costConfig;
+  if(d.prod===undefined)           d.prod=false;
+  if(d.prodPct===undefined)        d.prodPct=40;
+  if(d.fee===undefined)            d.fee=false;
+  if(d.feePct===undefined)         d.feePct=23;
+  if(d.ads===undefined)            d.ads=false;
+  if(d.adsPct===undefined)         d.adsPct=15;
+  if(d.mc===undefined)             d.mc=false;
+  if(d.mcDefaultRate===undefined)  d.mcDefaultRate = d.mcRate||500; // migrate old flat rate
+  if(!d.mcRates)                   d.mcRates={};
+  if(d.admin===undefined)          d.admin=false;
+  if(!d.adminRates)                d.adminRates={};
+  if(d.adminDefaultRate===undefined) d.adminDefaultRate=0;
+  if(d.adminHours===undefined)     d.adminHours=8;
+}
+function costCfgSave(){ localStorage.setItem(COST_CFG_KEY, JSON.stringify(costConfig)); }
+costCfgLoad();
+
+// รับค่าจาก Sheets — override ทุกครั้งที่ Refresh (server = source of truth)
+function applyCostConfigFromServer(cfg){
+  if(cfg.prod_cost_enabled   !== undefined) costConfig.prod    = cfg.prod_cost_enabled;
+  if(cfg.prod_cost_pct       !== undefined) costConfig.prodPct = +cfg.prod_cost_pct;
+  if(cfg.platform_fee_enabled!== undefined) costConfig.fee     = cfg.platform_fee_enabled;
+  if(cfg.platform_fee_pct    !== undefined) costConfig.feePct  = +cfg.platform_fee_pct;
+  if(cfg.ads_enabled         !== undefined) costConfig.ads     = cfg.ads_enabled;
+  if(cfg.ads_pct             !== undefined) costConfig.adsPct  = +cfg.ads_pct;
+  if(cfg.mc_rate_enabled     !== undefined) costConfig.mc      = cfg.mc_rate_enabled;
+  if(cfg.mc_rate             !== undefined) costConfig.mcDefaultRate = +cfg.mc_rate;
+  costCfgSave();
+  initCostCfgUI(); // sync form fields + margin display ทันที
+  const badge = document.getElementById('cc-server-badge');
+  if(badge) badge.style.display = '';
+}
+
+// รับ Rates จาก Sheets (v4.2) — ชื่อ MC/Admin ตรงกับข้อมูลจริง
+function applyRatesFromServer(rates){
+  if(rates.mcRates    && typeof rates.mcRates    === 'object') costConfig.mcRates    = rates.mcRates;
+  if(rates.adminRates && typeof rates.adminRates === 'object') costConfig.adminRates = rates.adminRates;
+  if(rates.mcDefaultRate    !== undefined) costConfig.mcDefaultRate    = +rates.mcDefaultRate;
+  if(rates.adminDefaultRate !== undefined) costConfig.adminDefaultRate = +rates.adminDefaultRate;
+  costCfgSave();
+  // อัปเดต UI ถ้า panel เปิดอยู่
+  if(document.getElementById('cc-mc-rates-list'))    ccRenderRates('mc');
+  if(document.getElementById('cc-admin-rates-list')) ccRenderRates('admin');
+  if(document.getElementById('cc-mc-def'))           document.getElementById('cc-mc-def').value = costConfig.mcDefaultRate;
+  if(document.getElementById('cc-admin-def'))        document.getElementById('cc-admin-def').value = costConfig.adminDefaultRate;
+}
+
+function toggleCostCfg(){
+  costCfgOpen=!costCfgOpen;
+  document.getElementById('cc-body').style.display=costCfgOpen?'':'none';
+  document.getElementById('cc-toggle-lbl').textContent=costCfgOpen?'▼ ซ่อน':'▶ แสดง';
+}
+
+function initCostCfgUI(){
+  document.getElementById('cc-prod-chk').checked = costConfig.prod;
+  document.getElementById('cc-prod-pct').value   = costConfig.prodPct;
+  document.getElementById('cc-fee-chk').checked  = costConfig.fee;
+  document.getElementById('cc-fee-pct').value    = costConfig.feePct;
+  document.getElementById('cc-ads-chk').checked  = costConfig.ads;
+  document.getElementById('cc-ads-pct').value    = costConfig.adsPct;
+  document.getElementById('cc-mc-chk').checked   = costConfig.mc;
+  document.getElementById('cc-mc-def').value     = costConfig.mcDefaultRate;
+  document.getElementById('cc-mc-section').style.display = costConfig.mc ? '' : 'none';
+  document.getElementById('cc-admin-chk').checked = costConfig.admin;
+  document.getElementById('cc-admin-hrs').value   = costConfig.adminHours;
+  document.getElementById('cc-admin-def').value   = costConfig.adminDefaultRate;
+  document.getElementById('cc-admin-section').style.display = costConfig.admin ? '' : 'none';
+  ccRenderRates('mc');
+  ccRenderRates('admin');
+  refreshCostDisplay();
+}
+
+function refreshCostDisplay(){
+  const totalPct=(costConfig.prod?costConfig.prodPct:0)+(costConfig.fee?costConfig.feePct:0)+(costConfig.ads?costConfig.adsPct:0);
+  document.getElementById('cc-net-margin').textContent=Math.max(0,100-totalPct).toFixed(1);
+  document.getElementById('cc-mc-note').style.display=costConfig.mc?'':'none';
+  document.getElementById('cc-admin-note').style.display=costConfig.admin?'':'none';
+  document.getElementById('cc-mc-section').style.display=costConfig.mc?'':'none';
+  document.getElementById('cc-admin-section').style.display=costConfig.admin?'':'none';
+}
+
+function updateCostConfig(){
+  costConfig.prod    = document.getElementById('cc-prod-chk').checked;
+  costConfig.prodPct = +document.getElementById('cc-prod-pct').value||0;
+  costConfig.fee     = document.getElementById('cc-fee-chk').checked;
+  costConfig.feePct  = +document.getElementById('cc-fee-pct').value||0;
+  costConfig.ads     = document.getElementById('cc-ads-chk').checked;
+  costConfig.adsPct  = +document.getElementById('cc-ads-pct').value||0;
+  costConfig.mc           = document.getElementById('cc-mc-chk').checked;
+  costConfig.mcDefaultRate= +document.getElementById('cc-mc-def').value||0;
+  costConfig.admin        = document.getElementById('cc-admin-chk').checked;
+  costConfig.adminHours   = +document.getElementById('cc-admin-hrs').value||8;
+  costConfig.adminDefaultRate = +document.getElementById('cc-admin-def').value||0;
+  // read rate rows
+  costConfig.mcRates    = ccReadRates('mc');
+  costConfig.adminRates = ccReadRates('admin');
+  costCfgSave();
+  refreshCostDisplay();
+  renderOverview();
+  if(currentTab==='mc') renderMC();
+}
+
+function calcProfit(entry){
+  // accepts entry object {sales,hours,mc,s1,s2} OR legacy (sales_number)
+  let sales=0, hours=0, mc='', s1='', s2='';
+  if(entry && typeof entry==='object'){
+    sales=entry.sales||0; hours=entry.hours||0;
+    mc=entry.mc||''; s1=entry.s1||''; s2=entry.s2||'';
+  } else { sales=entry||0; }
+  const pct=(costConfig.prod?costConfig.prodPct:0)+(costConfig.fee?costConfig.feePct:0)+(costConfig.ads?costConfig.adsPct:0);
+  let p=sales*(1-pct/100);
+  if(costConfig.mc){
+    const r=n=>n?(costConfig.mcRates[n]??costConfig.mcDefaultRate):0;
+    p-=r(mc)*hours;
+    if(s1) p-=r(s1)*hours;
+    if(s2) p-=r(s2)*hours;
+  }
+  return Math.round(p);
+}
+function calcAdminCost(dateSet){
+  if(!costConfig.admin||!adminPlans||!adminPlans.length) return 0;
+  return adminPlans
+    .filter(p=>!dateSet||dateSet.has(p.date))
+    .reduce((sum,p)=>{
+      const rate=costConfig.adminRates[p.admin_name]??costConfig.adminDefaultRate;
+      return sum+rate*costConfig.adminHours;
+    },0);
+}
+function calcMarginPct(sales, entriesOrProfit){
+  if(!sales) return null;
+  const profit=Array.isArray(entriesOrProfit)
+    ? entriesOrProfit.reduce((s,e)=>s+calcProfit(e),0)
+    : (typeof entriesOrProfit==='number' ? entriesOrProfit : 0);
+  return (profit/sales*100).toFixed(1);
+}
+function hasCostConfig(){
+  return costConfig.prod||costConfig.fee||costConfig.ads||costConfig.mc||costConfig.admin;
+}
+
+// ---- CC rate table helpers ----
+function ccRenderRates(type){
+  const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
+  const listId = `cc-${type}-rates-list`;
+  const el = document.getElementById(listId);
+  if(!el) return;
+  el.innerHTML = Object.entries(map).map(([name,rate])=>`
+    <div class="cc-rate-row">
+      <input class="cc-rate-name" type="text" value="${name}" placeholder="ชื่อ"
+        onchange="ccRenameRate('${type}','${name}',this.value)">
+      <input class="cost-cfg-inp" type="number" value="${rate}" min="0" step="50"
+        onchange="ccChangeRate('${type}','${name}',+this.value||0)">
+      <span class="cost-cfg-unit">฿/ชม.</span>
+      <button class="cc-del-btn" onclick="ccDeleteRate('${type}','${name}')">×</button>
+    </div>`).join('');
+}
+function ccAddRate(type){
+  const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
+  let name = type==='mc' ? 'MC ใหม่' : 'Admin ใหม่';
+  let i=1; while(map[name]) name=(type==='mc'?'MC ':'Admin ')+i++;
+  map[name]=type==='mc'?(costConfig.mcDefaultRate||500):(costConfig.adminDefaultRate||0);
+  costCfgSave(); ccRenderRates(type);
+}
+function ccDeleteRate(type, name){
+  const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
+  delete map[name]; costCfgSave(); ccRenderRates(type);
+}
+function ccRenameRate(type, oldName, newName){
+  newName=newName.trim(); if(!newName||newName===oldName) return;
+  const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
+  map[newName]=map[oldName]; delete map[oldName];
+  costCfgSave(); ccRenderRates(type);
+}
+function ccChangeRate(type, name, val){
+  const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
+  map[name]=val; costCfgSave();
+}
+function ccReadRates(type){
+  // Read current rates from DOM (in case user typed without triggering onchange)
+  const listId=`cc-${type}-rates-list`;
+  const el=document.getElementById(listId); if(!el) return {};
+  const rows=el.querySelectorAll('.cc-rate-row');
+  const map={};
+  rows.forEach(row=>{
+    const name=row.querySelector('.cc-rate-name')?.value?.trim();
+    const rate=+row.querySelector('.cost-cfg-inp')?.value||0;
+    if(name) map[name]=rate;
+  });
+  return map;
+}
+// ---- Overview platform filter ----
+function getOvEntries(){
+  const E=getFiltered();
+  if(!ovPlatHide.size) return E;
+  return E.filter(e=>!ovPlatHide.has(e.platform));
+}
+function ovTogglePlat(p){
+  if(ovPlatHide.has(p)) ovPlatHide.delete(p); else ovPlatHide.add(p);
+  renderOverview();
+}
+function renderOvPlatFilter(){
+  const plats=[...new Set(entries.map(e=>e.platform).filter(Boolean))].sort();
+  const cols={Shopee:'#EE4D2D',TikTok:'#010101',Facebook:'#1877F2'};
+  document.getElementById('ov-plat-checks').innerHTML=plats.map(p=>`
+    <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;cursor:pointer;user-select:none">
+      <input type="checkbox" ${ovPlatHide.has(p)?'':'checked'}
+        onchange="ovTogglePlat('${p}')"
+        style="accent-color:${cols[p]||'var(--teal)'};width:14px;height:14px">
+      <span style="color:${cols[p]||'#555'}">${p}</span>
+    </label>`).join('');
+}
+
+// ========== OVERVIEW HEATMAP ==========
+let ovHmYear  = new Date().getFullYear();
+let ovHmMonth = new Date().getMonth();
+
+function ovHmChangeMonth(d){
+  ovHmMonth+=d;
+  if(ovHmMonth>11){ ovHmMonth=0; ovHmYear++; }
+  if(ovHmMonth<0){ ovHmMonth=11; ovHmYear--; }
+  renderOverviewHeatmap();
+}
+
+function renderOverviewHeatmap(){
+  const MONTH_TH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const DOW_TH=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  const todayStr=localDateStr(new Date());
+  document.getElementById('ov-hm-label').textContent=`${MONTH_TH[ovHmMonth]} ${ovHmYear+543}`;
+  const dowEl=document.getElementById('ov-hm-dow');
+  if(!dowEl.children.length) dowEl.innerHTML=DOW_TH.map(d=>`<div class="mcp-cal-dow">${d}</div>`).join('');
+  const firstDow=new Date(ovHmYear,ovHmMonth,1).getDay();
+  const daysInMonth=new Date(ovHmYear,ovHmMonth+1,0).getDate();
+
+  // Build day-level data from ALL entries (not filtered, so heatmap always shows full month)
+  const allE=getFiltered();
+  const dayMap={};
+  allE.forEach(e=>{
+    if(!e.date) return;
+    const [ey,em]=e.date.split('-').map(Number);
+    if(ey===ovHmYear&&em-1===ovHmMonth){
+      if(!dayMap[e.date]) dayMap[e.date]={sales:0,count:0,live:0,rerun:0};
+      dayMap[e.date].sales+=(e.sales||0);
+      dayMap[e.date].count++;
+      if(e.type==='Live') dayMap[e.date].live++; else dayMap[e.date].rerun++;
+    }
+  });
+
+  const salesVals=Object.values(dayMap).map(d=>d.sales);
+  const maxSales=salesVals.length?Math.max(...salesVals):1;
+
+  const HM_COLORS=['#EBF9F5','#C7EFE6','#8FD9C9','#1ABC9C','#148F77','#0E6655'];
+  function hmColor(sales){
+    if(!sales||sales<=0) return '#F4F6F7';
+    const p=sales/maxSales;
+    if(p<0.1) return HM_COLORS[0];
+    if(p<0.25) return HM_COLORS[1];
+    if(p<0.5)  return HM_COLORS[2];
+    if(p<0.75) return HM_COLORS[3];
+    if(p<0.9)  return HM_COLORS[4];
+    return HM_COLORS[5];
+  }
+  function hmText(sales){
+    const p=sales/maxSales;
+    return p>=0.5?'white':'var(--navy)';
+  }
+  function fmtSales(s){
+    if(!s) return '';
+    if(s>=1000000) return (s/1000000).toFixed(1)+'M';
+    if(s>=1000) return Math.round(s/1000)+'K';
+    return s.toLocaleString('th-TH');
+  }
+
+  let html='';
+  for(let i=0;i<firstDow;i++) html+=`<div class="mcp-cal-day empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${ovHmYear}-${String(ovHmMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const day=dayMap[ds];
+    const sales=day?day.sales:0;
+    const bg=hmColor(sales);
+    const tc=day?hmText(sales):'#CCC';
+    const isToday=ds===todayStr;
+    html+=`<div class="mcp-cal-day" style="background:${bg};border:1.5px solid ${isToday?'var(--orange)':'transparent'};min-height:52px;cursor:default">
+      <div class="mcp-cal-day-num" style="color:${isToday?'var(--orange)':tc}">${d}</div>
+      ${sales?`<div style="font-size:10px;font-weight:700;color:${tc};margin-top:2px;line-height:1.2">${fmtSales(sales)}</div>
+               <div style="font-size:9px;color:${tc};opacity:.75">${day.count}กะ</div>`:''}
+    </div>`;
+  }
+  document.getElementById('ov-hm-grid').innerHTML=html;
+
+  // Legend
+  const legSteps=[0,10,25,50,75,90,100];
+  document.getElementById('ov-hm-legend').innerHTML=
+    `<span>น้อย</span>`+
+    HM_COLORS.map(c=>`<div style="width:16px;height:16px;border-radius:3px;background:${c}"></div>`).join('')+
+    `<span>มาก</span>`+
+    (maxSales>1?`<span style="margin-left:8px">max: ฿${fmtSales(maxSales)}</span>`:'');
+}
+
+// ========== MC ==========
+function getMCStats(data){
+  data = data || getFiltered();
+  const mcs = [...new Set(data.map(e=>e.mc).filter(Boolean))].sort();
+  return mcs.map(mc=>{
+    const r = data.filter(e=>e.mc===mc);
+    const sh = r.filter(e=>e.platform==='Shopee');
+    const tt = r.filter(e=>e.platform==='TikTok');
+    const fb = r.filter(e=>e.platform==='Facebook'); // เพิ่มการคำนวณ MC ให้รองรับ Facebook
+    return { mc, count:r.length, totalSales:r.reduce((a,e)=>a+e.sales,0),
+      avgSales:r.length?avg(r.map(e=>e.sales)):0, avgViewers:r.length?avg(r.map(e=>e.viewers)):0,
+      shopCount:sh.length, shopAvg:sh.length?avg(sh.map(e=>e.sales)):0,
+      tiktCount:tt.length, tiktAvg:tt.length?avg(tt.map(e=>e.sales)):0,
+      faceCount:fb.length, faceAvg:fb.length?avg(fb.map(e=>e.sales)):0 };
+  }).filter(m=>m.count>0);
+}
+
+function renderMC(){
+  const data  = getFiltered();
+  const stats = getMCStats(data).sort((a,b)=>b.avgSales-a.avgSales);
+  if(!stats.length){ document.getElementById('mc-bars').innerHTML='<div style="color:var(--gray);text-align:center;padding:20px">ยังไม่มีข้อมูล</div>'; return; }
+  const maxAvg  = Math.max(...stats.map(s=>s.avgSales),1);
+  const meanAvg = avg(stats.map(s=>s.avgSales));
+
+  // Platform averages (for Performance Index)
+  const platAvg = {};
+  ['Shopee','TikTok','Facebook'].forEach(p=>{
+    const pd = data.filter(e=>e.platform===p);
+    platAvg[p] = pd.length ? avg(pd.map(e=>e.sales)) : 0;
+  });
+
+  document.getElementById('mc-bars').innerHTML = stats.map((s,i)=>{
+    const w = Math.round(s.avgSales/maxAvg*100);
+    const c = MC_COLORS[s.mc] || 'var(--teal)';
+    return `<div class="bar-row">
+      <div class="bar-label">${s.mc}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${c}">#${i+1}</div></div>
+      <div class="bar-val">฿${fmt(Math.round(s.avgSales))}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('mc-body').innerHTML = stats.map((s,i)=>{
+    const cls = i===0?'badge-top':s.avgSales>=meanAvg?'badge-mid':'badge-low';
+    const lbl = i===0?'Top Performer':s.avgSales>=meanAvg?'ปานกลาง':'ควรตรวจสอบ';
+    // CR and AOV for this MC
+    const mcEntries = data.filter(e=>e.mc===s.mc);
+    const mcOrders  = mcEntries.reduce((a,e)=>a+e.orders,0);
+    const mcViewers = mcEntries.reduce((a,e)=>a+e.viewers,0);
+    const cr  = (mcViewers>0&&mcOrders>0) ? (mcOrders/mcViewers*100).toFixed(1)+'%' : '—';
+    const aov = mcOrders>0 ? '฿'+fmt(Math.round(s.totalSales/mcOrders)) : '—';
+    const mcProfit = mcEntries.reduce((sum,e)=>sum+calcProfit(e),0);
+    const mcMargin = s.totalSales ? (mcProfit/s.totalSales*100).toFixed(1) : null;
+    const profitColor = !hasCostConfig()?'inherit':mcProfit>=0?'#27AE60':'#E74C3C';
+    return `<tr class="${i%2?'alt':''}">
+      <td><b>#${i+1}</b></td>
+      <td><b style="color:${MC_COLORS[s.mc]||'#333'}">${s.mc}</b></td>
+      <td>${s.count}</td>
+      <td style="text-align:right">฿${fmt(s.totalSales)}</td>
+      <td style="text-align:right">฿${fmt(Math.round(s.avgSales))}</td>
+      <td style="text-align:right;font-weight:700;color:${profitColor}">${hasCostConfig()?'฿'+fmt(mcProfit):'—'}</td>
+      <td style="text-align:center;font-weight:700;color:${profitColor}">${hasCostConfig()&&mcMargin!==null?mcMargin+'%':'—'}</td>
+      <td>${Math.round(s.avgViewers).toLocaleString()}</td>
+      <td style="text-align:center">${cr}</td>
+      <td style="text-align:right">${aov}</td>
+      <td><span class="badge ${cls}">${lbl}</span></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('mc-platform-body').innerHTML = stats.map((s,i)=>{
+    // Performance Index per platform
+    const piShop = platAvg['Shopee']>0 && s.shopCount ? Math.round(s.shopAvg/platAvg['Shopee']*100) : null;
+    const piTikt = platAvg['TikTok']>0 && s.tiktCount ? Math.round(s.tiktAvg/platAvg['TikTok']*100) : null;
+    const piFace = platAvg['Facebook']>0 && s.faceCount ? Math.round(s.faceAvg/platAvg['Facebook']*100) : null;
+    const piColor = v => v===null?'#CCC':v>=110?'var(--green)':v>=90?'var(--orange)':'var(--red)';
+    const piStr  = v => v===null?'—':`<span style="font-weight:700;color:${piColor(v)}">${v}</span>`;
+    let dom = '—';
+    if(s.shopCount || s.tiktCount || s.faceCount) {
+      const maxP = Math.max(s.shopAvg, s.tiktAvg, s.faceAvg);
+      if(maxP === s.shopAvg && s.shopCount) dom = '<span class="badge badge-shopee">Shopee</span>';
+      else if(maxP === s.tiktAvg && s.tiktCount) dom = '<span class="badge badge-tiktok">TikTok</span>';
+      else if(s.faceCount) dom = '<span class="badge badge-facebook">Facebook</span>';
+    }
+    return `<tr class="${i%2?'alt':''}">
+      <td><b style="color:${MC_COLORS[s.mc]||'#333'}">${s.mc}</b></td>
+      <td style="text-align:right">${s.shopCount?'฿'+fmt(Math.round(s.shopAvg)):'-'}</td>
+      <td style="text-align:center">${piStr(piShop)}</td>
+      <td style="text-align:right">${s.tiktCount?'฿'+fmt(Math.round(s.tiktAvg)):'-'}</td>
+      <td style="text-align:center">${piStr(piTikt)}</td>
+      <td style="text-align:right">${s.faceCount?'฿'+fmt(Math.round(s.faceAvg)):'-'}</td>
+      <td style="text-align:center">${piStr(piFace)}</td>
+      <td>${dom}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ========== SHIFT ==========
+function getShiftData(data, platform, shift){
+  const r = data.filter(e=>e.platform===platform&&e.shift===shift);
+  const l = r.filter(e=>e.type==='Live'), rr = r.filter(e=>e.type==='Re-run');
+  const liveSum  = l.reduce((a,e)=>a+e.sales,0);
+  const rerunSum = rr.reduce((a,e)=>a+e.sales,0);
+  return {
+    total:r.length,
+    liveCount:l.length,
+    liveAvg:l.length?avg(l.map(e=>e.sales)):null,
+    liveSum:l.length?liveSum:null,
+    rerunCount:rr.length,
+    rerunAvg:rr.length?avg(rr.map(e=>e.sales)):null,
+    rerunSum:rr.length?rerunSum:null,
+  };
+}
+
+function getTimeSlotsForPlatform(data, platform){
+  return [...new Set(
+    data.filter(e=>e.platform===platform&&e.start_time).map(e=>e.start_time)
+  )].sort();
+}
+
+function getTimeSlotData(data, platform, timeSlot){
+  const r = data.filter(e=>e.platform===platform&&e.start_time===timeSlot);
+  const l = r.filter(e=>e.type==='Live'), rr = r.filter(e=>e.type==='Re-run');
+  const liveSum  = l.reduce((a,e)=>a+e.sales,0);
+  const rerunSum = rr.reduce((a,e)=>a+e.sales,0);
+  return {
+    total:r.length,
+    liveCount:l.length,
+    liveAvg:l.length?avg(l.map(e=>e.sales)):null,
+    liveSum:l.length?liveSum:null,
+    rerunCount:rr.length,
+    rerunAvg:rr.length?avg(rr.map(e=>e.sales)):null,
+    rerunSum:rr.length?rerunSum:null,
+  };
+}
+
+function heatCls(val,max){ if(!val) return 'h0'; const r=val/max; return r<.33?'h1':r<.66?'h2':'h3'; }
+
+let shiftMetric    = 'avg';   // 'avg' | 'sum'
+let shiftGroup     = 'shift'; // 'shift' | 'time'
+let shiftFilterSet = null;    // null = all; Set of selected labels
+
+function setShiftMetric(m){
+  shiftMetric = m;
+  document.querySelectorAll('.metric-btn').forEach(b=>b.classList.remove('metric-active'));
+  const btn = document.getElementById('btn-shift-'+m);
+  if(btn) btn.classList.add('metric-active');
+  renderShift();
+}
+
+function setShiftGroup(g){
+  shiftGroup = g;
+  shiftFilterSet = null; // reset filter when switching group mode
+  ['shift','time'].forEach(x=>{
+    const b = document.getElementById('btn-group-'+x);
+    if(b) b.classList.toggle('metric-active', x===g);
+  });
+  renderShift();
+}
+
+function renderShiftFilters(labels){
+  const c = document.getElementById('shift-filter-checks');
+  if(!c) return;
+  // init: select all if first time or after reset
+  if(!shiftFilterSet) shiftFilterSet = new Set(labels);
+  c.innerHTML = labels.map(l=>`
+    <label style="display:inline-flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap;background:${shiftFilterSet.has(l)?'var(--teal)':'#EEE'};color:${shiftFilterSet.has(l)?'white':'#555'};padding:2px 10px;border-radius:12px;transition:.15s">
+      <input type="checkbox" ${shiftFilterSet.has(l)?'checked':''} style="display:none" onchange="toggleShiftFilter('${l}',this.checked)">
+      ${l}
+    </label>`).join('');
+}
+
+function toggleShiftFilter(label, checked){
+  if(!shiftFilterSet) return;
+  checked ? shiftFilterSet.add(label) : shiftFilterSet.delete(label);
+  renderShift();
+}
+
+function selectAllShiftFilters(){
+  const labels = [...document.getElementById('shift-filter-checks').querySelectorAll('label')].map(l=>l.textContent.trim());
+  shiftFilterSet = new Set(labels);
+  renderShift();
+}
+
+function clearShiftFilters(){
+  shiftFilterSet = new Set();
+  renderShift();
+}
+
+function renderShift(){
+  const E      = getFiltered();
+  const isAvg  = shiftMetric === 'avg';
+  const byTime = shiftGroup  === 'time';
+  const getVal      = d => isAvg ? d.liveAvg  : d.liveSum;
+  const getRerunVal = d => isAvg ? d.rerunAvg : d.rerunSum;
+
+  // build full data arrays ตาม group mode
+  let sd, td, fd;
+  if(byTime){
+    sd = getTimeSlotsForPlatform(E,'Shopee').map(t=>({label:t,...getTimeSlotData(E,'Shopee',t)}));
+    td = getTimeSlotsForPlatform(E,'TikTok').map(t=>({label:t,...getTimeSlotData(E,'TikTok',t)}));
+    fd = getTimeSlotsForPlatform(E,'Facebook').map(t=>({label:t,...getTimeSlotData(E,'Facebook',t)}));
+  } else {
+    sd = shopeeShifts.map(s=>({label:s,...getShiftData(E,'Shopee',s)}));
+    td = tiktokShifts.map(s=>({label:s,...getShiftData(E,'TikTok',s)}));
+    fd = facebookShifts.map(s=>({label:s,...getShiftData(E,'Facebook',s)}));
+  }
+
+  // render filter checkboxes (union of all labels)
+  const allLabels = [...new Set([...sd,...td,...fd].map(d=>d.label))];
+  if(byTime) allLabels.sort();
+  renderShiftFilters(allLabels);
+
+  // apply filter
+  const filterFn = d => !shiftFilterSet || shiftFilterSet.size===0 || shiftFilterSet.has(d.label);
+  const sdf = sd.filter(filterFn);
+  const tdf = td.filter(filterFn);
+  const fdf = fd.filter(filterFn);
+
+  const ms = Math.max(...sdf.map(d=>getVal(d)||0),1);
+  const mt = Math.max(...tdf.map(d=>getVal(d)||0),1);
+  const mf = Math.max(...fdf.map(d=>getVal(d)||0),1);
+
+  const heatHTML = (data, max) => {
+    if(!data.length) return `<div style="color:#aaa;font-size:12px;padding:12px;text-align:center">ไม่มีข้อมูล</div>`;
+    return `<div class="heatmap-grid" style="grid-template-columns:repeat(${data.length},1fr)">
+      ${data.map(d=>{
+        const v=getVal(d);
+        return `<div class="hc ${heatCls(v,max)}" title="${d.label}">
+          <div style="font-size:9px;margin-bottom:2px">${d.label}</div>
+          <div>${v?'฿'+Math.round(v/1000)+'K':'-'}</div>
+          <div style="font-size:8px;opacity:.8">${d.liveCount} Live</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  };
+
+  document.getElementById('shopee-heatmap').innerHTML  = heatHTML(sdf,ms);
+  document.getElementById('tiktok-heatmap').innerHTML  = heatHTML(tdf,mt);
+  document.getElementById('facebook-heatmap').innerHTML = heatHTML(fdf,mf);
+
+  // อัปเดต headers
+  const metricLabel = isAvg ? 'ยอดเฉลี่ย' : 'ยอดรวม';
+  const groupLabel  = byTime ? '⏰ เวลา' : '📋 กะที่';
+  const thL = document.getElementById('th-live-val');
+  const thR = document.getElementById('th-rerun-val');
+  const thG = document.getElementById('th-group-col');
+  if(thL) thL.textContent = `${metricLabel} Live (฿)`;
+  if(thR) thR.textContent = `${metricLabel} Re-run (฿)`;
+  if(thG) thG.textContent = groupLabel;
+
+  // build summary rows (ใช้ filtered data เหมือน heatmap)
+  const platforms = [
+    {name:'Shopee', data:sdf},
+    {name:'TikTok', data:tdf},
+    {name:'Facebook', data:fdf},
+  ];
+  const all = platforms.flatMap(p=>p.data.map(d=>({...d,platform:p.name})));
+
+  document.getElementById('shift-body').innerHTML = all.map((d,i)=>{
+    const lv = getVal(d), rv = getRerunVal(d);
+    const diff = (lv&&rv) ? ((lv-rv)/rv*100).toFixed(1)+'%' : '-';
+    // recommendation ใช้ avg เสมอ (sum ขึ้นอยู่กับจำนวนครั้ง ไม่ reflect คุณภาพ)
+    const rec = !d.total ? '<span class="badge" style="background:#EEE;color:#888">ยังไม่มีข้อมูล</span>' :
+                (d.liveAvg||0)>(d.rerunAvg||0) ? '<span class="badge badge-live">✅ ควร Live</span>' :
+                '<span class="badge badge-rerun">🔁 Re-run ได้</span>';
+    return `<tr class="${i%2?'alt':''}">
+      <td><span class="badge badge-${d.platform.toLowerCase()}">${d.platform}</span></td>
+      <td style="font-size:11px"><b>${d.label}</b></td>
+      <td>${lv?'฿'+fmt(Math.round(lv)):'-'}</td>
+      <td>${rv?'฿'+fmt(Math.round(rv)):'-'}</td>
+      <td>${diff}</td><td>${rec}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ========== ENTRY CALENDAR ==========
+let entCalYear  = new Date().getFullYear();
+let entCalMonth = new Date().getMonth(); // 0-based
+
+function entCalChangeMonth(delta){
+  entCalMonth += delta;
+  if(entCalMonth < 0){ entCalMonth=11; entCalYear--; }
+  if(entCalMonth > 11){ entCalMonth=0;  entCalYear++; }
+  renderEntryCalendar();
+}
+
+function entCalClickDay(ds){
+  entryViewDate = ds;
+  document.getElementById('entry-date-nav').value = ds;
+  renderEntryCalendar();
+  renderDailyView();
+  const nav = document.getElementById('entry-date-nav');
+  if(nav) nav.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+
+function renderEntryCalendar(){
+  const MONTH_TH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const DOW_TH=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  const today=new Date();
+  const todayStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  const lbl=document.getElementById('ent-cal-month-label');
+  if(lbl) lbl.textContent=`${MONTH_TH[entCalMonth]} ${entCalYear+543}`;
+
+  const dowEl=document.getElementById('ent-cal-dow');
+  if(dowEl&&!dowEl.children.length) dowEl.innerHTML=DOW_TH.map(d=>`<div class="mcp-cal-dow">${d}</div>`).join('');
+
+  const firstDow=new Date(entCalYear,entCalMonth,1).getDay();
+  const daysInMonth=new Date(entCalYear,entCalMonth+1,0).getDate();
+  const OPTIONAL_SHIFT='กะที่ 5';
+  // กะที่ 5 ไม่ required โดย default → base = 8 (Shopee 1-4 + TikTok 1-4)
+  const baseRequired=shopeeShifts.filter(s=>s!==OPTIONAL_SHIFT).length+tiktokShifts.filter(s=>s!==OPTIONAL_SHIFT).length;
+
+  let totalFilled=0, totalRequired=0;
+  let html='';
+  for(let i=0;i<firstDow;i++) html+=`<div class="mcp-cal-day empty"></div>`;
+
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${entCalYear}-${String(entCalMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEnt=entries.filter(e=>e.date===ds);
+    const dayPlan=mcpPlans.filter(p=>p.date===ds);
+
+    // optional slots ที่มี plan: กะที่ 5 (Shopee/TikTok) + ทุก shift ของ Facebook
+    const optPlannedSlots=new Set([
+      ...dayPlan.filter(p=>p.shift===OPTIONAL_SHIFT&&p.platform!=='Facebook').map(p=>`${p.platform}|${p.shift}`),
+      ...dayPlan.filter(p=>p.platform==='Facebook').map(p=>`${p.platform}|${p.shift}`),
+    ]);
+    const totalSlots=baseRequired+optPlannedSlots.size;
+
+    const hasOT=dayEnt.some(e=>e.shift_variant==='OT'||e.shift_variant==='เริ่มช้า + OT');
+    const hasAdhoc=dayEnt.some(e=>e.shift_variant==='Ad-hoc');
+    const hasCancelled=dayEnt.some(e=>e.shift_variant==='ยกเลิก');
+    const filled=dayEnt.filter(e=>e.shift_variant!=='ยกเลิก').length;
+
+    const isFuture=ds>todayStr;
+    const covPct=totalSlots>0?Math.min(filled/totalSlots*100,100):0;
+    let covColor;
+    if(isFuture) covColor='#BDC3C7';
+    else if(filled===0&&!hasCancelled) covColor='#E74C3C';
+    else if(filled>=totalSlots) covColor='#27AE60';
+    else covColor='#F39C12';
+
+    if(!isFuture){ totalFilled+=filled; totalRequired+=totalSlots; }
+
+    const badges=[
+      hasOT?'<span style="font-size:8px;color:#E67E22">⏱</span>':'',
+      hasAdhoc?'<span style="font-size:8px;color:#2980B9">⚡</span>':'',
+      hasCancelled?'<span style="font-size:8px;color:#E74C3C">✗</span>':'',
+    ].join('');
+
+    const isTodayCls=ds===todayStr?' today':'';
+    const isSelCls=ds===entryViewDate?' mcp-selected':'';
+
+    html+=`<div class="mcp-cal-day${isTodayCls}${isSelCls}" onclick="entCalClickDay('${ds}')">
+      <div class="mcp-cal-day-num">${d}</div>
+      <div class="mcp-cov-bar"><div class="mcp-cov-fill" style="width:${covPct}%;background:${covColor}"></div></div>
+      <div class="mcp-cov-text">${isFuture?'':(totalSlots>0?filled+'/'+totalSlots:(filled>0?filled+' กะ':''))}</div>
+      <div style="text-align:right;min-height:10px">${badges}</div>
+    </div>`;
+  }
+
+  const gridEl=document.getElementById('ent-cal-grid');
+  if(gridEl) gridEl.innerHTML=html;
+
+  const sumEl=document.getElementById('ent-cal-summary');
+  if(sumEl){
+    if(totalRequired>0){
+      const pct=Math.round(totalFilled/totalRequired*100);
+      sumEl.textContent=`กรอกครบ ${totalFilled}/${totalRequired} กะ (${pct}%) — คลิกวันไหนก็ได้เพื่อกรอกข้อมูล`;
+    } else {
+      sumEl.textContent='คลิกวันไหนก็ได้เพื่อกรอกข้อมูล';
+    }
+  }
+}
+
+// Variant badge helper
+function getVariantBadge(variant){
+  const map={
+    'OT':'<span class="variant-badge vb-ot">⏱ OT</span>',
+    'เริ่มช้า':'<span class="variant-badge vb-late">⏰ เริ่มช้า</span>',
+    'เริ่มช้า + OT':'<span class="variant-badge vb-ot">⏱ OT+ช้า</span>',
+    'Ad-hoc':'<span class="variant-badge vb-adhoc">⚡ Ad-hoc</span>',
+    'ยกเลิก':'<span class="variant-badge vb-cancel">✗ ยกเลิก</span>',
+  };
+  return map[variant]||'';
+}
+
+// Show/hide sales fields when variant = ยกเลิก
+function onVariantChange(){
+  const v=document.getElementById('f-shift-variant').value;
+  const isCancelled=v==='ยกเลิก';
+  ['f-sales','f-orders','f-viewers'].forEach(id=>{
+    const fg=document.getElementById(id)?.closest('.form-group');
+    if(fg) fg.style.opacity=isCancelled?'0.35':'1';
+    const el=document.getElementById(id);
+    if(el) el.disabled=isCancelled;
+  });
+}
+
+// ========== REQ-02: Required Field Validation ==========
+const REQUIRED_FIELDS = [
+  { id:'f-mc',    errId:'err-mc',    check: v => v !== '' },
+  { id:'f-s1',    errId:'err-s1',    check: v => v !== '' },
+  { id:'f-sales', errId:'err-sales', check: v => v !== '' && !isNaN(+v) },
+  { id:'f-hours', errId:'err-hours', check: v => +v > 0   },
+];
+
+function setFieldState(id, state){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('req-empty','req-filled','req-invalid');
+  if(state==='empty')   el.classList.add('req-empty');
+  if(state==='filled')  el.classList.add('req-filled');
+  if(state==='invalid') el.classList.add('req-invalid');
+}
+
+function showFieldError(errId, show){
+  const el = document.getElementById(errId);
+  if(el) el.classList.toggle('visible', show);
+}
+
+function validateField(fieldId, forceShow){
+  const rf = REQUIRED_FIELDS.find(f=>f.id===fieldId);
+  if(!rf) return true;
+  // MC ไม่ required สำหรับ Re-run
+  if(fieldId==='f-mc' && document.getElementById('f-type')?.value==='Re-run'){
+    setFieldState(fieldId,'filled'); showFieldError(rf.errId,false); return true;
+  }
+  const el = document.getElementById(fieldId);
+  if(!el) return true;
+  const valid = rf.check(el.value);
+  setFieldState(fieldId, valid?'filled':(el.value===''&&!forceShow?'empty':'invalid'));
+  if(forceShow) showFieldError(rf.errId, !valid);
+  return valid;
+}
+
+function validateAllRequired(){
+  const isCancelled = document.getElementById('f-shift-variant')?.value === 'ยกเลิก';
+  const isRerun     = document.getElementById('f-type')?.value === 'Re-run';
+  let ok = true;
+  REQUIRED_FIELDS.forEach(rf=>{
+    const skip = (isCancelled && rf.id==='f-sales') || (isRerun && rf.id==='f-mc');
+    if(skip){ setFieldState(rf.id,'filled'); showFieldError(rf.errId,false); return; }
+    const el = document.getElementById(rf.id);
+    if(!el) return;
+    const valid = rf.check(el.value);
+    setFieldState(rf.id, valid?'filled':'invalid');
+    showFieldError(rf.errId, !valid);
+    if(!valid) ok = false;
+  });
+  return ok;
+}
+
+function initRequiredFieldListeners(){
+  REQUIRED_FIELDS.forEach(rf=>{
+    const el = document.getElementById(rf.id);
+    if(!el) return;
+    el.addEventListener('blur',   ()=>validateField(rf.id, true));
+    el.addEventListener('change', ()=>validateField(rf.id, true));
+  });
+}
+
+function resetRequiredFieldStates(){
+  REQUIRED_FIELDS.forEach(rf=>{
+    setFieldState(rf.id,'empty');
+    showFieldError(rf.errId, false);
+  });
+}
+
+// ========== ENTRY ==========
+function updateShifts(){
+  const p = document.getElementById('f-platform').value;
+  const s = document.getElementById('f-shift');
+  // อัปเดต Dropdown กะให้รองรับ 3 แพลตฟอร์ม
+  const shifts = p==='Shopee' ? shopeeShifts : p==='TikTok' ? tiktokShifts : p==='Facebook' ? facebookShifts : [];
+  s.innerHTML = '<option value="">-- เลือกกะ --</option>' + shifts.map(x=>`<option value="${x}">${x}</option>`).join('');
+  document.getElementById('f-start-time').value = ''; // clear when platform changes
+}
+
+// REQ-01: auto-fill start_time when shift selected
+function onShiftChange(){
+  const platform = document.getElementById('f-platform').value;
+  const shift    = document.getElementById('f-shift').value;
+  if(platform && shift){
+    const def = shiftDefaults.find(d=>d.platform===platform && d.shift===shift);
+    document.getElementById('f-start-time').value = def?.start_time || '';
+  }
+}
+
+function toggleMC(){
+  const t = document.getElementById('f-type').value;
+  const isRerun = t === 'Re-run';
+  const mcEl = document.getElementById('f-mc');
+  document.getElementById('mc-group').style.opacity = isRerun ? '0.4' : '1';
+  mcEl.disabled = isRerun;
+  if(isRerun){
+    mcEl.selectedIndex = 0; // ล้างค่า MC เมื่อเป็น Re-run
+    setFieldState('f-mc', 'filled'); // ไม่ required สำหรับ Re-run
+    showFieldError('err-mc', false);
+  }
+}
+
+async function addEntry(){
+  const variant = document.getElementById('f-shift-variant').value || 'ปกติ';
+  const isCancelledEntry = variant === 'ยกเลิก';
+
+  // REQ-02: Validate required fields
+  if(!isCancelledEntry && !validateAllRequired()){
+    showToast('❌ กรอกข้อมูลที่จำเป็นให้ครบ', true);
+    return;
+  }
+
+  const e = {
+    date: document.getElementById('f-date').value,
+    platform: document.getElementById('f-platform').value,
+    shift: document.getElementById('f-shift').value,
+    type: document.getElementById('f-type').value,
+    mc: document.getElementById('f-type').value==='Re-run' ? '' : document.getElementById('f-mc').value,
+    s1: document.getElementById('f-s1').value,
+    s2: document.getElementById('f-s2').value,
+    sales: isCancelledEntry ? 0 : (+document.getElementById('f-sales').value||0),
+    orders: isCancelledEntry ? 0 : (+document.getElementById('f-orders').value||0),
+    viewers: isCancelledEntry ? 0 : (+document.getElementById('f-viewers').value||0),
+    hours: +document.getElementById('f-hours').value||4.0,
+    start_time: document.getElementById('f-start-time').value || '',
+    reason: document.getElementById('f-reason').value,
+    note: document.getElementById('f-note').value,
+    shift_variant: variant,
+    promo_used: document.getElementById('f-promo-used').value || 'ไม่มี',
+    hero_products: document.getElementById('f-hero-products').value,
+    technical_issues: document.getElementById('f-technical-issues').value || 'ไม่มีปัญหา',
+  };
+  if(!e.date||!e.platform||!e.shift||!e.type){ showToast('❌ กรอกข้อมูลให้ครบก่อน',true); return; }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> บันทึก...';
+
+  // Sync navigator ให้ตรงกับวันที่บันทึก
+  if(e.date && e.date !== entryViewDate){
+    entryViewDate = e.date;
+    document.getElementById('entry-date-nav').value = e.date;
+  }
+
+  // Replace existing entry (กรณีคลิก slot ที่กรอกแล้ว)
+  if(selectedExistingIdx !== null){
+    const oldEntry = entries[selectedExistingIdx];
+    const delOk = await postToSheets('delete', { rowIndex: selectedExistingIdx });
+    if(!delOk){ btn.disabled=false; btn.innerHTML='💾 บันทึกทับ'; return; }
+    const addOk = await postToSheets('add', { entry: e });
+    if(addOk){
+      if(oldEntry) uncacheEntry(oldEntry.date, oldEntry.platform, oldEntry.shift);
+      cacheEntry({...e});
+      entries.splice(selectedExistingIdx, 1, {...e});
+      selectedExistingIdx = null;
+      renderEntry();
+      showToast('✅ อัปเดตแล้ว');
+      clearForm();
+      fetchData();
+    }
+    btn.disabled=false; btn.innerHTML='💾 บันทึก';
+    return;
+  }
+
+  if(apiUrl){
+    const ok = await postToSheets('add', { entry: e });
+    if(ok){
+      cacheEntry({...e});          // เก็บ local cache กันข้อมูลหายตอน fetchData
+      entries.push({...e});        // optimistic update
+      renderEntry();
+      showToast('✅ บันทึกไป Google Sheets แล้ว');
+      clearForm();
+      fetchData();                 // background sync
+    }
+  } else {
+    entries.push(e);
+    renderEntry();
+    showToast('✅ บันทึก (local) — ยังไม่ได้ตั้งค่า Sheets');
+    clearForm();
+  }
+  btn.disabled = false; btn.innerHTML = '💾 บันทึก';
+}
+
+async function deleteEntry(idx){
+  if(!confirm('ลบรายการนี้?')) return;
+  const target = entries[idx];
+  if(apiUrl){
+    const ok = await postToSheets('delete', { rowIndex: idx });
+    if(ok){
+      if(target) uncacheEntry(target.date, target.platform, target.shift);
+      await fetchData();
+      showToast('🗑 ลบแล้ว');
+    }
+  } else {
+    if(target) uncacheEntry(target.date, target.platform, target.shift);
+    entries.splice(idx,1);
+    renderEntry();
+  }
+}
+
+function clearForm(){
+  unlockForm();
+  ['f-sales','f-orders','f-viewers','f-note','f-hero-products'].forEach(id=>document.getElementById(id).value='');
+  ['f-platform','f-shift','f-type','f-mc','f-s1','f-s2','f-reason'].forEach(id=>document.getElementById(id).selectedIndex=0);
+  document.getElementById('f-date').value       = entryViewDate || localDateStr(new Date());
+  document.getElementById('f-hours').value      = '4.0';
+  document.getElementById('f-start-time').value = '';
+  document.getElementById('f-shift-variant').value    = 'ปกติ';
+  document.getElementById('f-promo-used').value       = 'ไม่มี';
+  document.getElementById('f-technical-issues').value = 'ไม่มีปัญหา';
+  document.getElementById('mc-group').style.opacity='1';
+  document.getElementById('f-mc').disabled=false;
+  onVariantChange();
+  resetRequiredFieldStates();
+}
+
+function renderEntry(){
+  renderEntryCalendar();
+  renderDailyView();
+  const E = getFiltered();
+  document.getElementById('entry-count').textContent = E.length === entries.length ? entries.length : `${E.length} / ${entries.length}`;
+  document.getElementById('entry-body').innerHTML = [...E].reverse().map((e,i)=>{
+    const realIdx = entries.indexOf(e);
+    const sph = e.hours>0 ? Math.round(e.sales/e.hours) : 0;
+    return `<tr class="${i%2?'alt':''}">
+      <td>${e.date}</td>
+      <td><span class="badge badge-${e.platform.toLowerCase()}">${e.platform}</span></td>
+      <td style="font-size:10px">${e.shift}</td>
+      <td><span class="badge badge-${e.type==='Live'?'live':'rerun'}">${e.type}</span></td>
+      <td><b>${e.mc||'—'}</b></td>
+      <td style="font-size:10px">${e.s1||'—'}</td>
+      <td style="text-align:right">฿${fmt(e.sales)}</td>
+      <td>${e.orders}</td><td>${fmt(e.viewers)}</td>
+      <td style="text-align:right">฿${fmt(sph)}</td>
+      <td><button class="btn btn-danger" onclick="deleteEntry(${realIdx})">ลบ</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportCSV(){
+  const hdr = [
+    'วันที่','Platform','กะ','ประเภท','MC','Support1','Support2',
+    'ยอดขาย','Orders','Viewers','ชั่วโมง','฿/ชม.','สาเหตุ','หมายเหตุ',
+    'Shift Variant', 'โปรโมชัน', 'ปัญหาเทคนิค', 'สินค้า Hero'
+  ];
+  const rows = entries.map(e=>[
+    e.date, e.platform, e.shift, e.type, e.mc, e.s1, e.s2, 
+    e.sales, e.orders, e.viewers, e.hours, 
+    e.hours>0 ? Math.round(e.sales/e.hours) : 0, 
+    e.reason, e.note,
+    e.shift_variant || '',
+    e.promo_used || '',
+    e.technical_issues || '',
+    e.hero_products || ''
+  ]);
+  const csv = [hdr,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download = 'livestream_data_v2_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('📥 Export CSV แล้ว');
+}
+
+// ========== DAILY VIEW ==========
+function onEntryDateChange(){
+  entryViewDate = document.getElementById('entry-date-nav').value;
+  renderDailyView();
+}
+
+function changeEntryDate(delta){
+  const localFmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(delta === 0){
+    entryViewDate = localFmt(new Date());
+  } else {
+    const d = new Date(entryViewDate + 'T12:00:00'); // noon หลีกเลี่ยง timezone ทำให้วันเคลื่อน
+    d.setDate(d.getDate() + delta);
+    entryViewDate = localFmt(d);
+  }
+  document.getElementById('entry-date-nav').value = entryViewDate;
+  renderDailyView();
+}
+
+function renderDailyView(){
+  const nav = document.getElementById('entry-date-nav');
+  if(!nav) return;
+  const dateEntries = entries.filter(e => e.date === entryViewDate);
+  const curPlatform = document.getElementById('f-platform').value;
+  const curShift    = document.getElementById('f-shift').value;
+  const formDate    = document.getElementById('f-date').value;
+  const locked      = document.getElementById('form-locked-info').style.display !== 'none';
+
+  const platforms = [
+    { name:'Shopee',   shifts:shopeeShifts,   dot:'var(--shopee)',    required:true  },
+    { name:'TikTok',   shifts:tiktokShifts,   dot:'#555',             required:true  },
+    { name:'Facebook', shifts:facebookShifts, dot:'var(--facebook)',  required:false },
+  ];
+
+  const OPT_SHIFT = 'กะที่ 5';
+  let total = 0, filled = 0;
+  const html = platforms.map(plat => {
+    if(!plat.shifts.length) return '';
+    // นับ total เฉพาะ required platform: กะที่ 5 นับต่อเมื่อมี plan วันนั้น
+    if(plat.required){
+      plat.shifts.forEach(s=>{
+        const isOpt = s === OPT_SHIFT;
+        const hasPlan = mcpPlans.some(p=>p.date===entryViewDate&&p.platform===plat.name&&p.shift===s);
+        if(!isOpt || hasPlan) total++;
+      });
+    }
+    const slotsHtml = plat.shifts.map(shift => {
+      const entry = dateEntries.find(e => e.platform === plat.name && e.shift === shift);
+      const plan  = mcpPlans.find(p => p.date === entryViewDate && p.platform === plat.name && p.shift === shift);
+      const isCancelled = entry && entry.shift_variant === 'ยกเลิก';
+      const isAdhoc = entry && entry.shift_variant === 'Ad-hoc';
+      const hasVariant = entry && entry.shift_variant && entry.shift_variant !== 'ปกติ' && entry.shift_variant !== 'ยกเลิก';
+      // นับ filled เฉพาะ required shift (กะที่ 5 = required ถ้ามี plan)
+      const isOptShift = shift === OPT_SHIFT;
+      const shiftPlanned = mcpPlans.some(p=>p.date===entryViewDate&&p.platform===plat.name&&p.shift===shift);
+      if(entry && !isCancelled && plat.required && (!isOptShift || shiftPlanned)) filled++;
+      const isSelected = locked && formDate === entryViewDate && curPlatform === plat.name && curShift === shift;
+      let cls, statusHtml;
+      if(isSelected) {
+        cls = 'selected';
+        statusHtml = entry ? `<div class="slot-ok">✅ กำลังแก้ไข</div>` : `<div class="slot-planned">✎ กำลังกรอก</div>`;
+      } else if(isCancelled) {
+        cls = 'cancelled';
+        statusHtml = `<div class="slot-cancelled">❌ ยกเลิก</div>`;
+      } else if(entry && !isCancelled) {
+        cls = isAdhoc ? 'adhoc' : 'filled';
+        const vBadge = hasVariant ? `<div>${getVariantBadge(entry.shift_variant)}</div>` : '';
+        statusHtml = `<div class="slot-ok">✅ กรอกแล้ว</div>
+          <div class="slot-detail">${entry.mc||(entry.type==='Re-run'?'Re-run':'—')} · ฿${fmt(entry.sales)}</div>${vBadge}`;
+      } else if(plan) {
+        cls = 'planned';
+        statusHtml = `<div class="slot-planned">🟡 รอกรอก</div>
+          <div class="slot-detail">${plan.mc||'—'} · ${plan.type||'Live'}</div>`;
+      } else {
+        cls = 'empty';
+        statusHtml = `<div class="slot-miss">○ ยังไม่กรอก</div>`;
+      }
+      const safeShift = shift.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="shift-slot ${cls}" onclick="selectSlot('${plat.name}','${safeShift}')">
+        <div class="slot-name">${shift}</div>${statusHtml}
+      </div>`;
+    }).join('');
+    return `<div class="daily-plat-section">
+      <div class="daily-plat-label">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${plat.dot}"></span>
+        ${plat.name}
+        ${!plat.required ? '<span style="font-size:10px;font-weight:400;color:#AAA;margin-left:4px">(ไม่บังคับ)</span>' : ''}
+      </div>
+      <div class="shift-slots">${slotsHtml}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('daily-platform-sections').innerHTML =
+    html || '<div style="color:var(--gray);font-size:12px;padding:8px 0">กำลังโหลดข้อมูลกะ... (Refresh หากค้างนาน)</div>';
+
+  const badge = document.getElementById('daily-filled-badge');
+  const missing = total - filled;
+  if(!total){
+    badge.textContent = '';
+  } else if(!missing){
+    badge.textContent = `✅ ครบทุกกะ ${filled}/${total}`;
+    badge.style.cssText = 'font-size:11px;font-weight:400;padding:2px 10px;border-radius:20px;background:#D5F5E3;color:#1E8449';
+  } else {
+    badge.textContent = `⚠️ ขาด ${missing} กะ  (${filled}/${total})`;
+    badge.style.cssText = 'font-size:11px;font-weight:400;padding:2px 10px;border-radius:20px;background:#FEF9E7;color:#7D6608';
+  }
+}
+
+function selectSlot(platform, shift){
+  const existing = entries.find(e => e.date === entryViewDate && e.platform === platform && e.shift === shift);
+  selectedExistingIdx = existing ? entries.indexOf(existing) : null;
+
+  document.getElementById('f-date').value = entryViewDate;
+  document.getElementById('f-platform').value = platform;
+  updateShifts();
+  document.getElementById('f-shift').value = shift;
+
+  if(existing){
+    const setSelect = (id, val) => {
+      const el = document.getElementById(id);
+      for(let i=0;i<el.options.length;i++) if(el.options[i].value===val){ el.selectedIndex=i; break; }
+    };
+    setSelect('f-type', existing.type||'');
+    toggleMC();
+    setSelect('f-mc',     existing.mc||'');
+    setSelect('f-s1',     existing.s1||'');
+    setSelect('f-s2',     existing.s2||'');
+    setSelect('f-reason', existing.reason||'');
+    document.getElementById('f-sales').value      = existing.sales      || '';
+    document.getElementById('f-orders').value     = existing.orders     || '';
+    document.getElementById('f-viewers').value    = existing.viewers    || '';
+    document.getElementById('f-hours').value      = existing.hours      || '4.0';
+    document.getElementById('f-start-time').value = existing.start_time || '';
+    document.getElementById('f-note').value       = existing.note       || '';
+    document.getElementById('f-shift-variant').value    = existing.shift_variant    || 'ปกติ';
+    document.getElementById('f-promo-used').value       = existing.promo_used       || 'ไม่มี';
+    document.getElementById('f-technical-issues').value = existing.technical_issues || 'ไม่มีปัญหา';
+    document.getElementById('f-hero-products').value   = existing.hero_products    || '';
+    onVariantChange();
+    document.getElementById('save-btn').innerHTML = '💾 บันทึกทับ';
+  } else {
+    ['f-sales','f-orders','f-viewers','f-note'].forEach(id => document.getElementById(id).value='');
+    document.getElementById('f-hero-products').value = '';
+    document.getElementById('f-hours').value = '4.0';
+    document.getElementById('f-shift-variant').value = 'ปกติ';
+    document.getElementById('f-promo-used').value = 'ไม่มี';
+    document.getElementById('f-technical-issues').value = 'ไม่มีปัญหา';
+    // REQ-01: auto-fill start_time from ShiftDefaults
+    const defTime = shiftDefaults.find(d=>d.platform===platform && d.shift===shift);
+    document.getElementById('f-start-time').value = defTime?.start_time || '';
+    resetRequiredFieldStates();
+    // Pre-fill from MCPlan (Ghost Entry)
+    const plan = mcpPlans.find(p => p.date === entryViewDate && p.platform === platform && p.shift === shift);
+    if(plan) {
+      const setSelect = (id, val) => {
+        const el = document.getElementById(id);
+        for(let i=0;i<el.options.length;i++) if(el.options[i].value===val){ el.selectedIndex=i; break; }
+      };
+      setSelect('f-type', plan.type || 'Live');
+      setSelect('f-mc', plan.mc || '');
+    } else {
+      ['f-type','f-mc','f-s1','f-s2','f-reason'].forEach(id => document.getElementById(id).selectedIndex=0);
+    }
+    ['f-s1','f-s2','f-reason'].forEach(id => document.getElementById(id).selectedIndex=0);
+    toggleMC();
+    document.getElementById('save-btn').innerHTML = '💾 บันทึก';
+  }
+
+  // Show locked header
+  document.getElementById('form-locked-info').style.display = 'flex';
+  document.getElementById('locked-date-tag').textContent = '📅 ' + entryViewDate;
+  const pColors = { Shopee:{bg:'#FDEDEC',color:'#C0392B'}, TikTok:{bg:'#EAECEE',color:'#17202A'}, Facebook:{bg:'#E7F3FF',color:'#1877F2'} };
+  const pc = pColors[platform] || {bg:'#EEE',color:'#333'};
+  const ptag = document.getElementById('locked-platform-tag');
+  ptag.textContent = platform; ptag.style.background = pc.bg; ptag.style.color = pc.color;
+  document.getElementById('locked-shift-tag').textContent = shift;
+  document.getElementById('fg-date').style.display     = 'none';
+  document.getElementById('fg-platform').style.display = 'none';
+  document.getElementById('fg-shift').style.display    = 'none';
+
+  renderDailyView();
+  document.getElementById('entry-form-panel').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function unlockForm(){
+  selectedExistingIdx = null;
+  document.getElementById('form-locked-info').style.display  = 'none';
+  document.getElementById('fg-date').style.display     = '';
+  document.getElementById('fg-platform').style.display = '';
+  document.getElementById('fg-shift').style.display    = '';
+  document.getElementById('save-btn').innerHTML = '💾 บันทึก';
+  renderDailyView();
+}
+
+// ========== UTILS ==========
+function showToast(msg, isErr=false){
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.className='toast show'+(isErr?' error-toast':'');
+  setTimeout(()=>t.className='toast',2800);
+}
+function showLoading(text){ document.getElementById('loading-text').textContent=text; document.getElementById('loading-overlay').classList.remove('hidden'); }
+function hideLoading(){ document.getElementById('loading-overlay').classList.add('hidden'); }
+
+// ========== INIT ==========
+const _todayStr = localDateStr(new Date());
+document.getElementById('f-date').value          = _todayStr;
+document.getElementById('f-hours').value         = '4.0';
+document.getElementById('entry-date-nav').value  = _todayStr;
+entryViewDate = _todayStr;
+
+(function(){
+  const today = new Date();
+  document.getElementById('filter-from').value = localDateStr(new Date(today.getFullYear(), today.getMonth(), 1));
+  document.getElementById('filter-to').value   = localDateStr(today);
+  document.getElementById('fp-thisMonth').classList.add('fp-active');
+  document.getElementById('fp-all').classList.remove('fp-active');
+})();
+
+// REQ-02: attach blur/change validation after DOM ready
+initRequiredFieldListeners();
+
+// REQ-03: set default PVA date range
+pvInitDates();
+
+const _origFetch = fetchData;
+const _patchedFetch = async function(){
+  await _origFetch.apply(this, arguments);
+  updateFilterCount();
+};
+
+_patchedFetch();
+
+// ========== MC PLAN FUNCTIONS ==========
+function renderMcPlan(){
+  // mcpLoadPlans() จาก localStorage เฉพาะตอนที่ mcpPlans ยังว่าง (ยังไม่ได้ fetch จาก API)
+  // ถ้า fetchData() โหลดมาแล้ว ให้ใช้ข้อมูลในหน่วยความจำเลย ไม่ทับด้วย cache เก่า
+  if(!mcpPlans.length) mcpLoadPlans();
+  renderMcpCalendar();
+  if(!pvFrom || !pvTo) pvInitDates();
+  pvBuildShiftChecks();
+  pvBuildMcFilter();
+  renderMcpPlanVsActual();
+  if(mcpSelectedDate) renderMcpDayDetail(mcpSelectedDate);
+}
+
+function mcpChangeMonth(delta){
+  mcpViewMonth += delta;
+  if(mcpViewMonth < 0){ mcpViewMonth=11; mcpViewYear--; }
+  if(mcpViewMonth >11){ mcpViewMonth=0;  mcpViewYear++; }
+  // ถ้า selected date อยู่ต่างเดือน ให้ reset
+  if(mcpSelectedDate){
+    const [y,m] = mcpSelectedDate.split('-').map(Number);
+    if(y!==mcpViewYear || (m-1)!==mcpViewMonth){
+      mcpSelectedDate=null;
+      document.getElementById('mcp-detail-panel').style.display='none';
+    }
+  }
+  renderMcpCalendar();
+  renderMcpPlanVsActual();
+}
+
+function renderMcpCalendar(){
+  const MONTH_TH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const DOW_TH=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  const t=new Date(); const todayStr=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+
+  document.getElementById('mcp-month-label').textContent=`${MONTH_TH[mcpViewMonth]} ${mcpViewYear+543}`;
+
+  const dowEl=document.getElementById('mcp-cal-dow');
+  if(!dowEl.children.length) dowEl.innerHTML=DOW_TH.map(d=>`<div class="mcp-cal-dow">${d}</div>`).join('');
+
+  const firstDow=new Date(mcpViewYear,mcpViewMonth,1).getDay(); // 0=Sun
+  const daysInMonth=new Date(mcpViewYear,mcpViewMonth+1,0).getDate();
+  const MCP_OPT_SHIFT='กะที่ 5';
+  const baseReq=shopeeShifts.filter(s=>s!==MCP_OPT_SHIFT).length+tiktokShifts.filter(s=>s!==MCP_OPT_SHIFT).length;
+
+  let html='';
+  for(let i=0;i<firstDow;i++) html+=`<div class="mcp-cal-day empty"></div>`;
+
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${mcpViewYear}-${String(mcpViewMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayPlans=mcpPlans.filter(p=>p.date===ds);
+    // นับ unique (platform, shift) ทั้งหมดรวม Facebook
+    const covCount=new Set(dayPlans.map(p=>`${p.platform}|${p.shift}`)).size;
+    // optional slots ที่มี plan: กะที่ 5 (Shopee/TikTok) + ทุก shift ของ Facebook
+    const optPlanned=new Set([
+      ...dayPlans.filter(p=>p.shift===MCP_OPT_SHIFT&&p.platform!=='Facebook').map(p=>`${p.platform}|${p.shift}`),
+      ...dayPlans.filter(p=>p.platform==='Facebook').map(p=>`${p.platform}|${p.shift}`),
+    ]);
+    const reqCount=baseReq+optPlanned.size;
+    const covPct=reqCount>0?Math.min(covCount/reqCount*100,100):0;
+    const covColor=covPct===0?'#E0E0E0':covPct<50?'#E74C3C':covPct<100?'#F39C12':'#27AE60';
+    const uniqMCs=[...new Set(dayPlans.map(p=>p.mc).filter(Boolean))];
+    const dots=uniqMCs.slice(0,6).map(mc=>`<div class="mcp-mc-dot" style="background:${MC_COLORS[mc]||'#AAA'}" title="${mc}"></div>`).join('');
+    const isTodayCls=ds===todayStr?' today':'';
+    const isSelCls=ds===mcpSelectedDate?' mcp-selected':'';
+    html+=`<div class="mcp-cal-day${isTodayCls}${isSelCls}" onclick="mcpClickDay('${ds}')">
+      <div class="mcp-cal-day-num">${d}</div>
+      <div class="mcp-cov-bar"><div class="mcp-cov-fill" style="width:${covPct}%;background:${covColor}"></div></div>
+      <div class="mcp-cov-text">${reqCount>0?covCount+'/'+reqCount:''}</div>
+      <div class="mcp-mc-dots">${dots}</div>
+    </div>`;
+  }
+  document.getElementById('mcp-cal-grid').innerHTML=html;
+}
+
+function mcpClickDay(ds){
+  mcpSelectedDate=ds;
+  renderMcpCalendar();
+  renderMcpDayDetail(ds);
+}
+
+function renderMcpDayDetail(ds){
+  const panel=document.getElementById('mcp-detail-panel');
+  const [y,m,d]=ds.split('-');
+  const MONTH_S=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  document.getElementById('mcp-detail-title-text').textContent=`📅 ${parseInt(d)} ${MONTH_S[parseInt(m)-1]} ${parseInt(y)+543}`;
+  panel.style.display='block';
+
+  const dayPlans=mcpPlans.filter(p=>p.date===ds);
+  const platforms=[
+    {name:'Shopee',   shifts:shopeeShifts,   dot:'var(--shopee)',   cls:'pc-shopee',   icon:'🛒', req:true },
+    {name:'TikTok',   shifts:tiktokShifts,   dot:'#444',            cls:'pc-tiktok',   icon:'🎵', req:true },
+    {name:'Facebook', shifts:facebookShifts, dot:'var(--facebook)', cls:'pc-facebook', icon:'📘', req:false},
+  ];
+
+  // helper — build one type-row (Live or Re-run)
+  const mkTypeRow=(plan,actual,typeStr,cssKey,eD,eP,eS)=>{
+    const mc=plan?plan.mc:null;
+    const isRerun=typeStr==='Re-run';
+    const mcCol=mc?(isRerun?'#27AE60':(MC_COLORS[mc]||'var(--teal)')):null;
+    const actMc=actual?actual.mc:null;
+    const stTime=plan?.start_time?`<span style="font-size:9px;color:#888;margin-left:4px">⏰${plan.start_time}</span>`:'';
+    return `<div class="mcp-shift-type-row">
+      ${isRerun
+        ?`<span style="font-size:9px;color:#6C757D;font-weight:600">rerun</span>`
+        :`<span class="mcp-type-label ${cssKey}" style="font-size:9px;padding:1px 5px">🔴 ${typeStr}</span>`
+      }
+      ${(isRerun?!!plan:!!mc)
+        ?`<div class="mcp-shift-mc" style="${isRerun?'background:#27AE6020;color:#27AE60':'background:'+(MC_COLORS[mc]||'var(--teal)')+'20;color:'+(MC_COLORS[mc]||'var(--teal)')};font-size:11px;padding:1px 7px;border-radius:12px;font-weight:700">${isRerun?'— rerun —':mc}</div>${stTime}
+           <button class="mcp-remove-btn" onclick="mcpRemovePlan('${eD}','${eP}','${eS}','${typeStr}')" style="margin-left:auto">✕</button>`
+        :`<div class="mcp-shift-mc unassigned" style="font-size:11px;padding:1px 7px;font-weight:600">— ว่าง —</div>
+           <button class="mcp-add-btn" onclick="openMcpModal('${eD}','${eP}','${eS}','${typeStr}')" style="margin-left:auto">+</button>`
+      }
+      ${actMc?`<span style="font-size:9px;color:var(--gray);background:#F0F0F0;padding:1px 5px;border-radius:8px;white-space:nowrap">จริง: <b>${actMc}</b></span>`:''}
+    </div>`;
+  };
+
+  // build each platform card
+  const cards=platforms.map(plat=>{
+    if(!plat.shifts.length) return '';
+
+    // coverage count (shifts with at least Live plan)
+    const covCount=plat.shifts.filter(s=>dayPlans.some(p=>p.platform===plat.name&&p.shift===s&&(p.type||'Live')==='Live')).length;
+    // total required: กะที่ 5 นับต่อเมื่อมี plan วันนั้น
+    const OPT_SH='กะที่ 5';
+    const total=plat.req?plat.shifts.filter(s=>s!==OPT_SH||dayPlans.some(p=>p.platform===plat.name&&p.shift===s)).length:plat.shifts.length;
+    const covPct=Math.round(covCount/total*100);
+    const covColor=covPct===0?'#E74C3C':covPct<100?'#F39C12':'#27AE60';
+    const covBg=covPct===0?'#FDEDEC':covPct<100?'#FEF9E7':'#D5F5E3';
+    const optTag=!plat.req?` <span style="font-size:9px;color:#AAA;font-weight:400">(opt)</span>`:'';
+
+    // build shift items
+    const shiftItems=plat.shifts.map(shift=>{
+      const eD=ds, eP=plat.name, eS=shift.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      const livePlan    =dayPlans.find(p=>p.platform===plat.name&&p.shift===shift&&(p.type||'Live')==='Live');
+      const rerunPlan   =dayPlans.find(p=>p.platform===plat.name&&p.shift===shift&&p.type==='Re-run');
+      const liveActual  =entries.find(e=>e.date===ds&&e.platform===plat.name&&e.shift===shift&&(e.type||'').toLowerCase().includes('live'));
+      const rerunActual =entries.find(e=>e.date===ds&&e.platform===plat.name&&e.shift===shift&&(e.type||'').toLowerCase().includes('re'));
+      const hasLive     =livePlan||liveActual;
+      const hasRerun    =rerunPlan||rerunActual;
+      // shift status dot — นับทั้ง Live และ Re-run
+      const dotColor=liveActual?'#27AE60':rerunActual?'#27AE60':livePlan?'#F39C12':rerunPlan?'#6C757D':'#CCC';
+      const statusBadge=liveActual
+        ?`<span style="font-size:9px;color:#27AE60;margin-left:auto">✅ กรอกแล้ว</span>`
+        :rerunActual
+        ?`<span style="font-size:9px;color:#6C757D;margin-left:auto">✅ 🔄 Re-run</span>`
+        :livePlan
+        ?`<span style="font-size:9px;color:#E67E22;margin-left:auto">🟡 รอกรอก</span>`
+        :`<span style="font-size:9px;color:#CCC;margin-left:auto">—</span>`;
+      return `<div class="mcp-shift-item">
+        <div class="mcp-shift-item-name">
+          <span style="width:7px;height:7px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0"></span>
+          <span>${shift}</span>
+          ${statusBadge}
+        </div>
+        ${mkTypeRow(livePlan,liveActual,'Live','live',eD,eP,eS)}
+        ${mkTypeRow(rerunPlan,rerunActual,'Re-run','rerun',eD,eP,eS)}
+      </div>`;
+    }).join('');
+
+    return `<div class="mcp-plat-card ${plat.cls}">
+      <div class="mcp-plat-card-hdr">
+        <span style="font-size:14px">${plat.icon}</span>
+        <span class="ph-name" style="color:${plat.dot}">${plat.name.toUpperCase()}${optTag}</span>
+        <span class="ph-cov" style="background:${covBg};color:${covColor}">${covCount}/${total} กะ</span>
+      </div>
+      <div class="mcp-plat-card-body">${shiftItems}</div>
+    </div>`;
+  }).filter(Boolean);
+
+  const colsHtml=cards.length
+    ?`<div class="mcp-detail-cols">${cards.join('')}</div>`
+    :'<div style="color:var(--gray);font-size:12px;padding:8px">กะยังไม่ถูกโหลด — กด Refresh ก่อน</div>';
+
+  document.getElementById('mcp-detail-body').innerHTML=colsHtml;
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function mcpRemovePlan(ds,platform,shift,type){
+  const t=type||'Live';
+  mcpPlans=mcpPlans.filter(p=>!(p.date===ds&&p.platform===platform&&p.shift===shift&&(p.type||'Live')===t));
+  mcpSavePlans();
+  renderMcpCalendar();
+  renderMcpDayDetail(ds);
+  renderMcpPlanVsActual();
+  showToast('🗑 ลบแผนแล้ว');
+  if(apiUrl) postToSheets('plan_delete',{date:ds,platform,shift,type:t});
+}
+
+// ===== REQ-03 Helpers =====
+function timeToMinutes(t){ if(!t) return null; const p=t.split(':'); return p.length<2?null:parseInt(p[0])*60+parseInt(p[1]); }
+
+function getPvaStatus(plan, actual){
+  const hasPlan   = !!plan;   
+  const hasActual = !!actual; 
+  
+  if(!hasPlan && !hasActual) return null;
+  if(!hasPlan && hasActual)  return 'noplan';
+  if(hasPlan  && !hasActual) return 'noactual';
+  
+  // 1. เช็คก่อนว่าสลับประเภทกันหรือเปล่า (เช่น แผนเป็น Live แต่ของจริงไปกด Re-run)
+  const pType = plan.type || 'Live';
+  const aType = actual.type || 'Live';
+  if (pType !== aType) return 'typechange'; // ถ้าประเภทไม่ตรงกัน เด้งสถานะใหม่ทันที
+  
+  // 2. ถ้าประเภทตรงกัน เช็คว่าเป็น Re-run ทั้งคู่ไหม (ถ้าใช่ไม่ต้องจับผิดชื่อ MC ถือว่า Match)
+  const isRerun = pType.toLowerCase().includes('re');
+  const mcMatch = isRerun ? true : (plan.mc === actual.mc);
+  
+  const pt = timeToMinutes(plan.start_time), at = timeToMinutes(actual.start_time);
+  const timeMismatch = (pt!==null && at!==null) ? Math.abs(pt-at) > PVA_TIME_THRESHOLD : false;
+  
+  if(!mcMatch)    return 'mcchange';
+  if(timeMismatch)return 'timedelta';
+  return 'match';
+}
+
+function getStatusBadge(st){
+  if(st==='match')    return '<span style="background:#E8F8F5;color:#27AE60;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;">✅ ตรงกัน</span>';
+  if(st==='noplan')   return '<span style="background:#FEF9E7;color:#F1C40F;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;">🟡 ไม่มี Plan</span>';
+  if(st==='noactual') return '<span style="background:#FDEDEC;color:#E74C3C;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;">🔴 ไม่มี Actual</span>';
+  if(st==='mcchange') return '<span style="background:#EBF5FB;color:#2980B9;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;">🔄 MC เปลี่ยน</span>';
+  if(st==='timedelta')return '<span style="background:#F4F6F6;color:#7F8C8D;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;">⏰ เวลาเลื่อน</span>';
+  if(st==='typechange')return '<span style="background:#FDEBD0;color:#D35400;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:bold;">⚠️ ผิดประเภท</span>';
+  return `<span class="badge" style="background:#CCC">${st}</span>`;
+}
+
+function pvInitDates(){
+  const today = new Date();
+  pvTo = localDateStr(today);
+  const d30 = new Date(today); d30.setDate(d30.getDate()-29);
+  pvFrom = localDateStr(d30);
+  const fEl=document.getElementById('pva-from'), tEl=document.getElementById('pva-to');
+  if(fEl) fEl.value=pvFrom;
+  if(tEl) tEl.value=pvTo;
+}
+
+function pvSetPreset(p, btn){
+  const today=new Date();
+  if(p==='7d'){        const d=new Date(today); d.setDate(d.getDate()-6); pvFrom=localDateStr(d); pvTo=localDateStr(today); }
+  else if(p==='30d'){  const d=new Date(today); d.setDate(d.getDate()-29);pvFrom=localDateStr(d); pvTo=localDateStr(today); }
+  else if(p==='thisMonth'){ pvFrom=localDateStr(new Date(today.getFullYear(),today.getMonth(),1)); pvTo=localDateStr(today); }
+  else if(p==='lastMonth'){ pvFrom=localDateStr(new Date(today.getFullYear(),today.getMonth()-1,1)); pvTo=localDateStr(new Date(today.getFullYear(),today.getMonth(),0)); }
+  const fEl=document.getElementById('pva-from'), tEl=document.getElementById('pva-to');
+  if(fEl) fEl.value=pvFrom;
+  if(tEl) tEl.value=pvTo;
+  document.querySelectorAll('.pva-preset-btn').forEach(b=>b.classList.remove('pva-active'));
+  if(btn) btn.classList.add('pva-active');
+  pvApplyFilter();
+}
+
+function pvApplyFilter(){
+  pvFrom = document.getElementById('pva-from')?.value || pvFrom;
+  pvTo   = document.getElementById('pva-to')?.value   || pvTo;
+  renderMcpPlanVsActual();
+}
+
+function pvResetFilters(){
+  pvInitDates();
+  document.querySelectorAll('#pva-platform-checks input').forEach(cb=>cb.checked=true);
+  document.querySelectorAll('#pva-shift-checks input').forEach(cb=>cb.checked=true);
+  const mc=document.getElementById('pva-mc-filter'); if(mc) mc.value='';
+  const st=document.getElementById('pva-status-filter'); if(st) st.value='all';
+  document.querySelectorAll('.pva-preset-btn').forEach(b=>b.classList.remove('pva-active'));
+  const btn30=document.getElementById('pvap-30d'); if(btn30) btn30.classList.add('pva-active');
+  pvApplyFilter();
+}
+
+function pvBuildShiftChecks(){
+  const el=document.getElementById('pva-shift-checks');
+  if(!el) return;
+  const allShifts=[...new Set([...shopeeShifts,...tiktokShifts,...facebookShifts])];
+  if(!allShifts.length) return;
+  // Preserve existing checked state if already built
+  const prev={};
+  el.querySelectorAll('input').forEach(cb=>{ prev[cb.value]=cb.checked; });
+  el.innerHTML=allShifts.map(s=>{
+    const chk = (s in prev) ? prev[s] : true;
+    return `<label class="pva-check-item"><input type="checkbox" value="${s}" onchange="pvApplyFilter()" ${chk?'checked':''}> ${s}</label>`;
+  }).join('');
+}
+
+function pvBuildMcFilter(){
+  const el=document.getElementById('pva-mc-filter');
+  if(!el) return;
+  const cur=el.value;
+  const allMCs=[...new Set([...mcpPlans.map(p=>p.mc),...entries.map(e=>e.mc)].filter(Boolean))].sort();
+  el.innerHTML='<option value="">ทั้งหมด</option>'+allMCs.map(mc=>`<option value="${mc}"${mc===cur?' selected':''}>${mc}</option>`).join('');
+}
+
+function pvUpdateSummary(rows){
+  const actuals=rows.filter(r=>r.actual).map(r=>r.actual);
+  const sumSales =actuals.reduce((a,e)=>a+e.sales,0);
+  const sumOrders=actuals.reduce((a,e)=>a+e.orders,0);
+  const sumHours =actuals.reduce((a,e)=>a+(e.hours||0),0);
+  const wSph=sumHours>0?Math.round(sumSales/sumHours):0;
+  const s=id=>document.getElementById(id);
+  if(s('pva-sum-sales'))  s('pva-sum-sales').textContent  = sumSales  ? '฿'+fmt(sumSales)  : '—';
+  if(s('pva-sum-orders')) s('pva-sum-orders').textContent = sumOrders ? fmt(sumOrders)      : '—';
+  if(s('pva-sum-hours'))  s('pva-sum-hours').textContent  = sumHours  ? sumHours.toFixed(1) : '—';
+  if(s('pva-sum-sph'))    s('pva-sum-sph').textContent    = wSph      ? '฿'+fmt(wSph)       : '—';
+  if(s('pva-sum-count'))  s('pva-sum-count').textContent  = rows.length+' กะ';
+}
+
+function renderMcpPlanVsActual(){
+  // Ensure dates are set
+  if(!pvFrom || !pvTo) pvInitDates();
+
+  const from=pvFrom, to=pvTo;
+  const mp=mcpPlans.filter(p=>{ if(from&&p.date<from)return false; if(to&&p.date>to)return false; return true; });
+  const me=entries.filter(e=>{ if(!e.date)return false; if(from&&e.date<from)return false; if(to&&e.date>to)return false; return true; });
+
+  const tbody=document.getElementById('pva-body');
+  if(!tbody) return;
+
+  // Rebuild dynamic filter options
+  pvBuildMcFilter();
+
+  // Read filter values
+  const selPlats=[...document.querySelectorAll('#pva-platform-checks input:checked')].map(cb=>cb.value);
+  const shiftCBs=document.querySelectorAll('#pva-shift-checks input');
+  const selShifts=shiftCBs.length ? [...shiftCBs].filter(cb=>cb.checked).map(cb=>cb.value) : null;
+  const mcFilter    =document.getElementById('pva-mc-filter')?.value||'';
+  const statusFilter=document.getElementById('pva-status-filter')?.value||'all';
+
+  // 1. แก้ไขตรงนี้: จับกลุ่มแค่ วันที่ | Platform | กะ (ตัดเรื่อง Type ออกเพื่อให้มันรวบรวมเป็นบรรทัดเดียว)
+  const keys=new Set();
+  mp.filter(p=>selPlats.includes(p.platform)).forEach(p=>keys.add(`${p.date}|${p.platform}|${p.shift}`));
+  me.filter(e=>selPlats.includes(e.platform)).forEach(e=>keys.add(`${e.date}|${e.platform}|${e.shift}`));
+
+  if(!keys.size){
+    tbody.innerHTML=`<tr><td colspan="12" style="color:var(--gray);text-align:center;padding:16px">ยังไม่มีข้อมูลในช่วงที่เลือก</td></tr>`;
+    pvUpdateSummary([]);
+    if(document.getElementById('pva-count-badge')) document.getElementById('pva-count-badge').textContent='0 รายการ';
+    if(document.getElementById('pva-count-info'))  document.getElementById('pva-count-info').textContent='';
+    return;
+  }
+
+  let rows=[...keys].sort().map(key=>{
+    const [date,platform,shift]=key.split('|');
+    if(selShifts && !selShifts.includes(shift)) return null;
+    
+    // ดึง Actual ออกมา
+    const actual=me.find(e=>e.date===date&&e.platform===platform&&e.shift===shift);
+    
+    // ดึง Plan ออกมา (ถ้ามี Actual ให้พยายามดึง Plan ที่ Type ตรงกันออกมาก่อน ถ้าไม่มีก็ดึง Plan แรกที่เจอ)
+    const allPlans = mp.filter(p=>p.date===date&&p.platform===platform&&p.shift===shift);
+    let plan = null;
+    if(actual) {
+      const actType = (actual.type||'').toLowerCase().includes('re') ? 'Re-run' : 'Live';
+      plan = allPlans.find(p=>(p.type||'Live')===actType) || allPlans[0];
+    } else {
+      plan = allPlans[0];
+    }
+
+    if(mcFilter && plan?.mc!==mcFilter && actual?.mc!==mcFilter) return null;
+    const status=getPvaStatus(plan,actual);
+    if(!status) return null;
+    if(statusFilter==='match'    && status!=='match') return null;
+    if(statusFilter==='mismatch' && status==='match') return null;
+    
+    // กำหนด Type ที่จะแสดงผล (ยึดตาม Actual ก่อน ถ้าไม่มีค่อยยึดตาม Plan)
+    const displayType = actual ? (actual.type || 'Live') : (plan?.type || 'Live');
+
+    return {date,platform,shift,type:displayType,plan,actual,status};
+  }).filter(Boolean);
+
+  tbody.innerHTML=rows.map((r,i)=>{
+    const pc=r.plan?.mc   ? (MC_COLORS[r.plan.mc]  ||'#333'):'#BBB';
+    const ac=r.actual?.mc ? (MC_COLORS[r.actual.mc]||'#333'):'#BBB';
+    const isFb=r.platform==='Facebook';
+    const sph=r.actual&&r.actual.hours>0?Math.round(r.actual.sales/r.actual.hours):0;
+    
+    // ปรับไอคอน Type 
+    const isRerun = r.type.toLowerCase().includes('re');
+    const typeBadge=isRerun?`<span class="mcp-type-label rerun" style="font-size:9px">🔄</span>`:`<span class="mcp-type-label live" style="font-size:9px">🔴</span>`;
+    
+    // ถ้ามีการเปลี่ยนใจจาก Live -> Re-run หรือกลับกัน จะแสดงให้เห็นชัดขึ้น
+    const diffTypeAlert = (r.plan && r.actual && (r.plan.type||'Live') !== (r.actual.type||'Live')) 
+      ? `<span style="font-size:9px;color:#C0392B;margin-left:4px" title="แผนคือ ${(r.plan.type||'Live')}">(ผิดแผน)</span>` : '';
+
+    return `<tr class="${i%2?'alt':''}" style="${isFb?'opacity:.85':''}">
+      <td>${r.date}</td>
+      <td><span class="badge badge-${r.platform.toLowerCase()}">${r.platform}</span> ${typeBadge}${diffTypeAlert}</td>
+      <td style="text-align:left;font-size:11px">${r.shift}</td>
+      <td><b style="color:${pc}">${r.plan?.mc||'—'}</b></td>
+      <td><b style="color:${ac}">${r.actual?.mc||'—'}</b></td>
+      <td style="font-size:11px">${r.plan?.start_time||'—'}</td>
+      <td style="font-size:11px">${r.actual?.start_time||'—'}</td>
+      <td style="text-align:right">${r.actual?.hours||'—'}</td>
+      <td style="text-align:right">${r.actual?'฿'+fmt(r.actual.sales):'—'}</td>
+      <td style="text-align:right">${r.actual?r.actual.orders:'—'}</td>
+      <td style="text-align:right">${sph?'฿'+fmt(sph):'—'}</td>
+      <td>${getStatusBadge(r.status)}</td>
+    </tr>`;
+  }).join('')||`<tr><td colspan="12" style="color:var(--gray);text-align:center;padding:16px">ไม่มีรายการที่ตรงกับ Filter ที่เลือก</td></tr>`;
+
+  pvUpdateSummary(rows);
+  if(document.getElementById('pva-count-badge')) document.getElementById('pva-count-badge').textContent=`${rows.length} รายการ`;
+  if(document.getElementById('pva-count-info'))  document.getElementById('pva-count-info').textContent=`(${rows.length} รายการ)`;
+}
+
+// ----- Modal -----
+function openMcpModal(prefillDate, prefillPlat, prefillShift, prefillType){
+  mcpModalMC=null; mcpModalPlat=null; mcpModalType=null;
+  // Build MC chips
+  const mcList=Object.keys(MC_COLORS).length?Object.keys(MC_COLORS):[...new Set(entries.map(e=>e.mc).filter(Boolean))].sort();
+  document.getElementById('mcp-mc-chips').innerHTML=mcList.map(mc=>{
+    const c=MC_COLORS[mc]||'#666';
+    return `<div class="mcp-mc-chip" data-mc="${mc}" style="border-color:${c};color:${c}" onclick="mcpSelectMC(this,'${mc.replace(/'/g,"\\'")}','${c}')">${mc}</div>`;
+  }).join('')||'<div style="color:var(--gray);font-size:12px">ยังไม่มี MC — Refresh ก่อน</div>';
+  // Reset platform + type chips
+  document.querySelectorAll('.mcp-plat-chip').forEach(c=>c.className=c.classList.contains('mcp-type-chip')?'mcp-type-chip mcp-plat-chip':'mcp-plat-chip');
+  document.getElementById('mcp-shift-checks').innerHTML='<div style="color:var(--gray);font-size:12px;padding:8px">เลือก Platform ก่อน</div>';
+  // Date range default
+  const today=new Date(); const todStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  document.getElementById('mcp-date-from').value=prefillDate||todStr;
+  document.getElementById('mcp-date-to').value=prefillDate||todStr;
+  document.getElementById('mcp-date-preview').textContent='';
+  // Prefill platform, type & shift if provided
+  if(prefillPlat){
+    const chip=document.querySelector(`.mcp-plat-chip[data-plat="${prefillPlat}"]`);
+    if(chip) mcpSelectPlat(chip);
+  }
+  if(prefillType){
+    const tKey=prefillType==='Re-run'?'Re-run':'Live';
+    const tc=document.querySelector(`.mcp-type-chip[data-type="${tKey}"]`);
+    if(tc) mcpSelectType(tc);
+  }
+  if(prefillShift){
+    setTimeout(()=>{
+      document.querySelectorAll('#mcp-shift-checks input[type=checkbox]').forEach(cb=>{ if(cb.value===prefillShift) cb.checked=true; });
+      mcpUpdatePreview(); // trigger auto-fill หลัง checkbox ถูก tick
+    },30);
+  }
+  document.getElementById('mcp-modal-overlay').classList.remove('hidden');
+}
+
+function closeMcpModal(){ document.getElementById('mcp-modal-overlay').classList.add('hidden'); }
+
+function mcpSelectMC(el,mc,color){
+  document.querySelectorAll('.mcp-mc-chip').forEach(c=>{ c.classList.remove('active'); c.style.background='white'; });
+  el.classList.add('active'); el.style.background=color; el.style.color='white';
+  mcpModalMC=mc;
+  mcpUpdatePreview();
+}
+
+function mcpSelectType(el){
+  const type=el.dataset.type; // 'Live' or 'Re-run'
+  document.querySelectorAll('.mcp-type-chip').forEach(c=>c.className='mcp-type-chip mcp-plat-chip');
+  el.classList.add(type==='Re-run'?'ap-Rerun':'ap-Live');
+  mcpModalType=type;
+  mcpUpdatePreview();
+}
+
+function mcpSelectPlat(el){
+  const plat=el.dataset.plat;
+  document.querySelectorAll('.mcp-plat-chip:not(.mcp-type-chip)').forEach(c=>c.className='mcp-plat-chip');
+  el.classList.add(`ap-${plat}`);
+  mcpModalPlat=plat;
+  // ล้าง start_time เมื่อเปลี่ยน platform เพื่อไม่ให้ค้างจาก platform เดิม
+  const stEl=document.getElementById('mcp-start-time');
+  if(stEl) stEl.value='';
+  const shifts=plat==='Shopee'?shopeeShifts:plat==='TikTok'?tiktokShifts:facebookShifts;
+  if(!shifts.length){ document.getElementById('mcp-shift-checks').innerHTML='<div style="color:var(--gray);font-size:12px;padding:8px">ยังไม่มีกะ — Refresh ก่อน</div>'; return; }
+  document.getElementById('mcp-shift-checks').innerHTML=shifts.map((s,i)=>
+    `<div class="mcp-shift-check"><input type="checkbox" id="mcb${i}" name="mcp_s" value="${s.replace(/"/g,'&quot;')}" onchange="mcpUpdatePreview()"><label for="mcb${i}">${s}</label></div>`
+  ).join('');
+  mcpUpdatePreview();
+}
+
+function mcpToggleAllShifts(v){ document.querySelectorAll('#mcp-shift-checks input[type=checkbox]').forEach(cb=>cb.checked=v); mcpUpdatePreview(); }
+
+// แปลง "7:30" / "0:00" / "07:30" → "07:30" สำหรับ <input type="time">
+function normalizeTimeStr(t){
+  if(!t) return '';
+  const s = String(t).trim();
+  // Handle ISO date strings like "1899-12-30T07:30:00.000Z" (Google Sheets time serial → JSON)
+  if(s.includes('T') && s.includes('Z')){
+    try {
+      const d = new Date(s);
+      if(!isNaN(d)){
+        const h = String(d.getUTCHours()).padStart(2,'0');
+        const m = String(d.getUTCMinutes()).padStart(2,'0');
+        return `${h}:${m}`;
+      }
+    } catch(e){}
+  }
+  const parts = s.split(':');
+  if(parts.length < 2) return '';
+  const h = String(parseInt(parts[0], 10) || 0).padStart(2,'0');
+  const m = String(parseInt(parts[1], 10) || 0).padStart(2,'0');
+  return `${h}:${m}`;
+}
+
+function mcpUpdatePreview(){
+  // REQ-01: auto-fill start_time when exactly one shift is checked
+  const checkedShifts=[...document.querySelectorAll('#mcp-shift-checks input:checked')].map(cb=>cb.value);
+  const stEl=document.getElementById('mcp-start-time');
+  if(stEl){
+    if(mcpModalPlat && checkedShifts.length===1){
+      // เปลี่ยนทุกครั้งที่ checkbox เปลี่ยน — ไม่มี !stEl.value guard
+      const def=shiftDefaults.find(d=>d.platform===mcpModalPlat&&d.shift===checkedShifts[0]);
+      stEl.value = def?.start_time || '';
+    } else if(checkedShifts.length===0){
+      stEl.value = ''; // ล้างเมื่อไม่มีกะถูกเลือก
+    }
+    // checkedShifts.length > 1 → คงค่าเดิม ให้ user กรอกเอง
+  }
+  const from=document.getElementById('mcp-date-from').value;
+  const to=document.getElementById('mcp-date-to').value;
+  const shifts=checkedShifts.length;
+  if(!from||!to||!shifts){ document.getElementById('mcp-date-preview').textContent=''; return; }
+  // count days
+  const cur=new Date(from+'T12:00:00'), end=new Date(to+'T12:00:00');
+  let days=0; const tmp=new Date(cur); while(tmp<=end){ days++; tmp.setDate(tmp.getDate()+1); }
+  const typeLbl=mcpModalType?` [${mcpModalType}]`:'';
+  document.getElementById('mcp-date-preview').textContent=`จะบันทึก${typeLbl} ${days} วัน × ${shifts} กะ = ${days*shifts} รายการ`;
+}
+
+function saveMcpAssignment(){
+  if(!mcpModalMC && mcpModalType !== 'Re-run') { showToast('❌ เลือก MC ก่อน',true); return; }
+  if(!mcpModalPlat){ showToast('❌ เลือก Platform ก่อน',true); return; }
+  if(!mcpModalType){ showToast('❌ เลือกประเภท (Live/Re-run) ก่อน',true); return; }
+  const checked=[...document.querySelectorAll('#mcp-shift-checks input:checked')].map(cb=>cb.value);
+  if(!checked.length){ showToast('❌ เลือกกะอย่างน้อย 1 กะ',true); return; }
+  const from=document.getElementById('mcp-date-from').value;
+  const to=document.getElementById('mcp-date-to').value;
+  if(!from||!to){ showToast('❌ เลือกช่วงวันที่',true); return; }
+  if(from>to){ showToast('❌ วันเริ่มต้องไม่เกินวันสิ้นสุด',true); return; }
+  const dates=[]; const cur=new Date(from+'T12:00:00'), end=new Date(to+'T12:00:00');
+  while(cur<=end){
+    dates.push(`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`);
+    cur.setDate(cur.getDate()+1);
+  }
+  if(dates.length>60){ showToast('❌ สูงสุด 60 วัน',true); return; }
+  const t=mcpModalType;
+  const planStartTime = document.getElementById('mcp-start-time').value || '';
+  const planHours     = parseFloat(document.getElementById('mcp-hours').value) || 4.0;
+  const newPlans=[];
+  for(const date of dates) for(const shift of checked){
+    // uniqueness: date+platform+shift+type
+    mcpPlans=mcpPlans.filter(p=>!(p.date===date&&p.platform===mcpModalPlat&&p.shift===shift&&(p.type||'Live')===t));
+    // REQ-01: use per-shift default start_time if field is blank
+    const defST = shiftDefaults.find(d=>d.platform===mcpModalPlat&&d.shift===shift);
+    const st = planStartTime || defST?.start_time || '';
+    const plan={date,platform:mcpModalPlat,shift,mc:mcpModalMC,type:t,start_time:st,hours:planHours};
+    mcpPlans.push(plan);
+    newPlans.push(plan);
+  }
+  mcpSavePlans(); // localStorage cache ก่อน
+  closeMcpModal();
+  renderMcpCalendar();
+  renderMcpPlanVsActual();
+  if(mcpSelectedDate) renderMcpDayDetail(mcpSelectedDate);
+  showToast(`✅ กำลังบันทึก ${newPlans.length} รายการ...`);
+  if(apiUrl){
+    postToSheets('plan_bulk_set',{plans:newPlans}).then(ok=>{
+      if(ok) showToast(`✅ บันทึกแผน ${newPlans.length} รายการลง Sheets แล้ว`);
+    });
+  }
+}
+
+// update preview เมื่อเปลี่ยนวันที่
+document.getElementById('mcp-date-from').addEventListener('change', mcpUpdatePreview);
+document.getElementById('mcp-date-to').addEventListener('change', mcpUpdatePreview);
+
+</script>
+</body>
+</html>
