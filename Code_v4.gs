@@ -172,17 +172,31 @@ function ensureMcPlanSheet() {
   if (!sh) {
     sh = SS.insertSheet(PLAN_SHEET);
   }
-  // ตรวจว่า row 1 col A ต้องเป็น 'date' (case-insensitive)
+
+  const HEADERS = ['date', 'platform', 'shift', 'mc', 'type', 'start_time', 'hours'];
+
+  // ตรวจว่า row 1 col A ต้องเป็น 'date'
   const row1val = sh.getLastRow() > 0 ? String(sh.getRange(1, 1).getValue()).trim().toLowerCase() : '';
   if (row1val !== 'date') {
-    // ไม่มี header หรือ header ผิด → insert header ที่ row 1
+    // ไม่มี header → insert ที่ row 1
     sh.insertRowBefore(1);
-    sh.getRange(1, 1, 1, 6).setValues([['date', 'platform', 'shift', 'mc', 'type', 'start_time']]);
-    sh.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#21373C').setFontColor('white');
-    // แปลง col A ทุก data row เป็น text
+    sh.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+    sh.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold').setBackground('#21373C').setFontColor('white');
     sh.getRange('A:A').setNumberFormat('@');
     SpreadsheetApp.flush();
-    Logger.log('MCPlan: header row inserted (was missing or wrong)');
+    Logger.log('MCPlan: header row inserted');
+  } else {
+    // Header มีอยู่แล้ว — ตรวจว่า 'hours' column มีไหม
+    const lastCol = sh.getLastColumn();
+    const headerRow = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(v => String(v).trim().toLowerCase());
+    if (!headerRow.includes('hours')) {
+      // เพิ่ม hours column ต่อท้าย
+      const hoursCol = lastCol + 1;
+      sh.getRange(1, hoursCol).setValue('hours');
+      sh.getRange(1, hoursCol).setFontWeight('bold').setBackground('#21373C').setFontColor('white');
+      SpreadsheetApp.flush();
+      Logger.log('MCPlan: hours column added at col ' + hoursCol);
+    }
   }
   return sh;
 }
@@ -199,11 +213,12 @@ function getMcPlans() {
     header.forEach((h, i) => { obj[String(h).trim().toLowerCase()] = r[i]; });
     return {
       date:       formatDate(obj.date),
-      platform:   String(obj.platform || ''),
-      shift:      String(obj.shift || ''),
-      mc:         String(obj.mc || ''),
-      type:       String(obj.type || 'Live'),
+      platform:   String(obj.platform   || ''),
+      shift:      String(obj.shift      || ''),
+      mc:         String(obj.mc         || ''),
+      type:       String(obj.type       || 'Live'),
       start_time: String(obj.start_time || ''),
+      hours:      parseFloat(String(obj.hours || '').replace(/,/g,'')) || 4.0,
     };
   }).filter(p => p.date && p.platform && p.shift);
 }
@@ -299,7 +314,7 @@ function handlePlanAdd(payload) {
   const sh = ensureMcPlanSheet();
   const plans = Array.isArray(payload.plans) ? payload.plans : [payload];
   plans.forEach(p => {
-    sh.appendRow([p.date, p.platform, p.shift, p.mc||'', p.type||'Live', p.start_time||'']);
+    sh.appendRow([p.date, p.platform, p.shift, p.mc||'', p.type||'Live', p.start_time||'', parseFloat(p.hours)||4.0]);
     const lr = sh.getLastRow();
     const dc = sh.getRange(lr, 1); dc.setNumberFormat('@'); dc.setValue(p.date);
   });
@@ -354,7 +369,7 @@ function handlePlanBulkSet(payload) {
 
   // Append new plans
   plans.forEach(p => {
-    sh.appendRow([p.date, p.platform, p.shift, p.mc || '', p.type || 'Live', p.start_time || '']);
+    sh.appendRow([p.date, p.platform, p.shift, p.mc || '', p.type || 'Live', p.start_time || '', parseFloat(p.hours)||4.0]);
     const lr = sh.getLastRow();
     const dc = sh.getRange(lr, 1);
     dc.setNumberFormat('@');
