@@ -280,17 +280,13 @@ function handleAdd(payload) {
   newRow[16] = entry.hero_products || '';
   newRow[17] = entry.technical_issues || '';
   newRow[22] = entry.start_time || '';
-  sh.appendRow(newRow);
-  const lastRow = sh.getLastRow();
-  // Force date column (col 1) to text to prevent auto-conversion
-  const dateCell = sh.getRange(lastRow, 1);
-  dateCell.setNumberFormat('@');
-  dateCell.setValue(entry.date);
-  // Force start_time column (col 23) to text
-  const stCell = sh.getRange(lastRow, 23);
-  stCell.setNumberFormat('@');
-  stCell.setValue(entry.start_time || '');
-  return { status: 'ok', rowIndex: lastRow - DATA_START_ROW };
+  // ใช้ getLastRow()+1 ก่อน แล้ว setValues() — หลีกเลี่ยง appendRow+getLastRow timing bug
+  const nextRow = sh.getLastRow() + 1;
+  sh.getRange(nextRow, 1).setNumberFormat('@');   // col 1 = date → text
+  sh.getRange(nextRow, 23).setNumberFormat('@');  // col 23 = start_time → text
+  sh.getRange(nextRow, 1, 1, 23).setValues([newRow]);
+  SpreadsheetApp.flush();
+  return { status: 'ok', rowIndex: nextRow - DATA_START_ROW };
 }
 
 // =============================================
@@ -313,11 +309,7 @@ function handleDelete(payload) {
 function handlePlanAdd(payload) {
   const sh = ensureMcPlanSheet();
   const plans = Array.isArray(payload.plans) ? payload.plans : [payload];
-  plans.forEach(p => {
-    sh.appendRow([p.date, p.platform, p.shift, p.mc||'', p.type||'Live', p.start_time||'', parseFloat(p.hours)||4.0]);
-    const lr = sh.getLastRow();
-    const dc = sh.getRange(lr, 1); dc.setNumberFormat('@'); dc.setValue(p.date);
-  });
+  _appendPlanRows(sh, plans);
   return { status: 'ok', count: plans.length };
 }
 
@@ -367,14 +359,11 @@ function handlePlanBulkSet(payload) {
   });
   toDelete.sort((a, b) => b - a).forEach(row => sh.deleteRow(row));
 
-  // Append new plans
-  plans.forEach(p => {
-    sh.appendRow([p.date, p.platform, p.shift, p.mc || '', p.type || 'Live', p.start_time || '', parseFloat(p.hours)||4.0]);
-    const lr = sh.getLastRow();
-    const dc = sh.getRange(lr, 1);
-    dc.setNumberFormat('@');
-    dc.setValue(p.date);
-  });
+  // Flush deletes before reading lastRow
+  SpreadsheetApp.flush();
+
+  // Append new plans (safe batch write)
+  _appendPlanRows(sh, plans);
 
   return { status: 'ok', count: plans.length };
 }
@@ -392,10 +381,12 @@ function handleAdminPlanAdd(payload) {
   plans.forEach(p => {
     // Remove existing plan for same date+shift first
     _deleteAdminRow(sh, p.date, p.shift);
-    sh.appendRow([p.date, p.shift, p.admin_name||'', '', '']);
-    const lr = sh.getLastRow();
-    const dc = sh.getRange(lr, 1); dc.setNumberFormat('@'); dc.setValue(p.date);
+    SpreadsheetApp.flush(); // ensure delete committed before reading lastRow
+    const nextRow = sh.getLastRow() + 1;
+    sh.getRange(nextRow, 1).setNumberFormat('@'); // date → text
+    sh.getRange(nextRow, 1, 1, 5).setValues([[p.date, p.shift, p.admin_name||'', '', '']]);
   });
+  SpreadsheetApp.flush();
   return { status: 'ok', count: plans.length };
 }
 
@@ -563,6 +554,30 @@ function ensureRatesSheet() {
 // =============================================
 // Helpers
 // =============================================
+
+// _appendPlanRows — เขียน plan rows ลง sheet แบบ safe
+// ใช้ getLastRow()+1 + setValues() แทน appendRow() เพื่อหลีกเลี่ยง
+// Apps Script buffer ทำให้ getLastRow() คืนค่าเก่าและเขียนทับ row ผิด
+function _appendPlanRows(sh, plans) {
+  if (!plans || !plans.length) return;
+  const startRow = sh.getLastRow() + 1;
+  const rows = plans.map(p => [
+    p.date,
+    p.platform || '',
+    p.shift    || '',
+    p.mc       || '',
+    p.type     || 'Live',
+    p.start_time || '',
+    parseFloat(p.hours) || 4.0,
+  ]);
+  // Set date + start_time columns as plain text first (prevent auto date conversion)
+  sh.getRange(startRow, 1, rows.length, 1).setNumberFormat('@'); // col A = date
+  sh.getRange(startRow, 6, rows.length, 1).setNumberFormat('@'); // col F = start_time
+  // Write all rows in one call
+  sh.getRange(startRow, 1, rows.length, 7).setValues(rows);
+  SpreadsheetApp.flush();
+}
+
 function _deleteAdminRow(sh, date, shift) {
   const data = sh.getDataRange().getValues();
   for (let i = data.length - 1; i >= 1; i--) {
