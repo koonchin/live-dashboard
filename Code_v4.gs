@@ -164,11 +164,35 @@ function getData() {
 }
 
 // =============================================
+// ensureMcPlanSheet — สร้าง/แก้ไข MCPlan sheet ให้มี header row
+// เรียกก่อนทุก operation ที่เกี่ยวกับ MCPlan
+// =============================================
+function ensureMcPlanSheet() {
+  let sh = SS.getSheetByName(PLAN_SHEET);
+  if (!sh) {
+    sh = SS.insertSheet(PLAN_SHEET);
+  }
+  // ตรวจว่า row 1 col A ต้องเป็น 'date' (case-insensitive)
+  const row1val = sh.getLastRow() > 0 ? String(sh.getRange(1, 1).getValue()).trim().toLowerCase() : '';
+  if (row1val !== 'date') {
+    // ไม่มี header หรือ header ผิด → insert header ที่ row 1
+    sh.insertRowBefore(1);
+    sh.getRange(1, 1, 1, 6).setValues([['date', 'platform', 'shift', 'mc', 'type', 'start_time']]);
+    sh.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#21373C').setFontColor('white');
+    // แปลง col A ทุก data row เป็น text
+    sh.getRange('A:A').setNumberFormat('@');
+    SpreadsheetApp.flush();
+    Logger.log('MCPlan: header row inserted (was missing or wrong)');
+  }
+  return sh;
+}
+
+// =============================================
 // getMcPlans — read MC_Plan sheet
 // =============================================
 function getMcPlans() {
-  const sh = SS.getSheetByName(PLAN_SHEET);
-  if (!sh) return [];
+  const sh = ensureMcPlanSheet();
+  if (sh.getLastRow() < 2) return []; // only header, no data
   const [header, ...rows] = sh.getDataRange().getValues();
   return rows.map(r => {
     const obj = {};
@@ -272,8 +296,7 @@ function handleDelete(payload) {
 // handlePlanAdd — append to MC_Plan
 // =============================================
 function handlePlanAdd(payload) {
-  const sh = SS.getSheetByName(PLAN_SHEET);
-  if (!sh) return { status: 'error', message: 'Sheet not found: ' + PLAN_SHEET };
+  const sh = ensureMcPlanSheet();
   const plans = Array.isArray(payload.plans) ? payload.plans : [payload];
   plans.forEach(p => {
     sh.appendRow([p.date, p.platform, p.shift, p.mc||'', p.type||'Live', p.start_time||'']);
@@ -287,8 +310,7 @@ function handlePlanAdd(payload) {
 // handlePlanDelete — remove MC plan row(s)
 // =============================================
 function handlePlanDelete(payload) {
-  const sh = SS.getSheetByName(PLAN_SHEET);
-  if (!sh) return { status: 'error', message: 'Sheet not found: ' + PLAN_SHEET };
+  const sh = ensureMcPlanSheet();
   const { date, platform, shift, type } = payload;
   const [header, ...rows] = sh.getDataRange().getValues();
   const hMap = {}; header.forEach((h, i) => hMap[String(h).trim().toLowerCase()] = i);
@@ -313,8 +335,7 @@ function handlePlanDelete(payload) {
 // Deletes all existing rows whose date appears in the plan list, then inserts new ones
 // =============================================
 function handlePlanBulkSet(payload) {
-  const sh = SS.getSheetByName(PLAN_SHEET);
-  if (!sh) return { status: 'error', message: 'Sheet not found: ' + PLAN_SHEET };
+  const sh = ensureMcPlanSheet();
   const plans = Array.isArray(payload.plans) ? payload.plans : [];
   if (!plans.length) return { status: 'ok', count: 0 };
 
