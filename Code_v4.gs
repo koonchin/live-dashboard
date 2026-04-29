@@ -346,16 +346,23 @@ function handlePlanBulkSet(payload) {
   const plans = Array.isArray(payload.plans) ? payload.plans : [];
   if (!plans.length) return { status: 'ok', count: 0 };
 
-  // Collect unique dates being replaced
-  const dates = new Set(plans.map(p => p.date).filter(Boolean));
+  // Build exact-match keys: ลบเฉพาะ row ที่ตรงกับ date+platform+shift+type ที่ส่งมา
+  // ไม่ลบ row อื่นๆ ของวันเดียวกันที่เป็น platform/shift ต่างกัน
+  const planKeys = new Set(plans.map(p =>
+    `${p.date}|${p.platform}|${p.shift}|${(p.type||'Live')}`
+  ));
 
-  // Delete existing rows for those dates (bottom-up to preserve indices)
+  // Delete matching rows bottom-up (to preserve row indices during deletion)
   const allRows = sh.getDataRange().getValues();
+  const hdr = allRows[0].map(h => String(h).trim().toLowerCase());
+  const ci = key => hdr.indexOf(key); // column index helper
+  const iDate=ci('date'), iPlat=ci('platform'), iShift=ci('shift'), iType=ci('type');
+
   const toDelete = [];
   allRows.forEach((r, idx) => {
     if (idx === 0) return; // skip header
-    const rDate = formatDate(r[0]);
-    if (dates.has(rDate)) toDelete.push(idx + 1); // 1-based sheet row
+    const key = `${formatDate(r[iDate])}|${r[iPlat]}|${r[iShift]}|${r[iType]||'Live'}`;
+    if (planKeys.has(key)) toDelete.push(idx + 1); // 1-based sheet row
   });
   toDelete.sort((a, b) => b - a).forEach(row => sh.deleteRow(row));
 
