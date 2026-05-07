@@ -2524,6 +2524,8 @@ function toggleMC(){
   } else {
     document.getElementById('mc-group').style.opacity = '1';
     mcEl.disabled = false;
+    // If MC was auto-set to 'No MC' (by ไม่ไลฟ์), reset it so user must pick a real MC
+    if(mcEl.value === 'No MC') mcEl.selectedIndex = 0;
   }
 }
 
@@ -2938,12 +2940,18 @@ function sortTableCol(tableEl, colIdx, thEl){
   rows.sort((a,b)=>{
     const aText = (a.cells[colIdx]?.textContent||'').trim();
     const bText = (b.cells[colIdx]?.textContent||'').trim();
-    // Strip currency/comma to get number
+    // Date strings must be checked BEFORE numeric (parseFloat("2026-05-07")===2026)
+    if(/^\d{4}-\d{2}-\d{2}/.test(aText) || /^\d{4}-\d{2}-\d{2}/.test(bText)){
+      return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+    }
+    // Strip currency/comma/percent to get number; treat "—"/NaN as -Infinity to group at end
     const aNum = parseFloat(aText.replace(/[฿,%\s,]/g,''));
     const bNum = parseFloat(bText.replace(/[฿,%\s,]/g,''));
-    if(!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum-bNum : bNum-aNum;
-    // Date strings
-    if(/^\d{4}-\d{2}-\d{2}/.test(aText)) return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+    if(!isNaN(aNum) || !isNaN(bNum)){
+      const aN = isNaN(aNum) ? -Infinity : aNum;
+      const bN = isNaN(bNum) ? -Infinity : bNum;
+      return asc ? aN-bN : bN-aN;
+    }
     return asc ? aText.localeCompare(bText,'th') : bText.localeCompare(aText,'th');
   });
 
@@ -3158,12 +3166,16 @@ function renderMcpDayDetail(ds){
         ?`<span style="font-size:9px;color:#E67E22;margin-left:auto">🟡 รอกรอก</span>`
         :`<span style="font-size:9px;color:#CCC;margin-left:auto">—</span>`;
       // Build type rows; for ไม่ไลฟ์ slot just show the ไม่ไลฟ์ row
+      const noLiveRow=(withRemove)=>`<div class="mcp-shift-type-row">
+        <span class="mcp-type-label" style="font-size:9px;padding:1px 5px;background:#7F8C8D;color:#fff;border-radius:8px">⛔ ไม่ไลฟ์</span>
+        <div class="mcp-shift-mc" style="background:#EAECEE;color:#555;font-size:11px;padding:1px 7px;border-radius:12px;font-weight:700">No MC</div>
+        ${withRemove?`<button class="mcp-remove-btn" onclick="mcpRemovePlan('${eD}','${eP}','${eS}','ไม่ไลฟ์')" style="margin-left:auto">✕</button>`
+                    :`<span style="font-size:9px;color:#27AE60;margin-left:auto">✅ กรอกแล้ว</span>`}
+       </div>`;
       const typeRowsHtml = noLivePlan
-        ? `<div class="mcp-shift-type-row">
-            <span class="mcp-type-label" style="font-size:9px;padding:1px 5px;background:#7F8C8D;color:#fff;border-radius:8px">⛔ ไม่ไลฟ์</span>
-            <div class="mcp-shift-mc" style="background:#EAECEE;color:#555;font-size:11px;padding:1px 7px;border-radius:12px;font-weight:700">No MC</div>
-            <button class="mcp-remove-btn" onclick="mcpRemovePlan('${eD}','${eP}','${eS}','ไม่ไลฟ์')" style="margin-left:auto">✕</button>
-           </div>`
+        ? noLiveRow(true)
+        : noLiveActual
+        ? noLiveRow(false)
         : mkTypeRow(livePlan,liveActual,'Live','live',eD,eP,eS)
         + mkTypeRow(rerunPlan,rerunActual,'Re-run','rerun',eD,eP,eS);
       return `<div class="mcp-shift-item">
@@ -3471,10 +3483,20 @@ function mcpSelectType(el){
   document.querySelectorAll('.mcp-type-chip').forEach(c=>c.className='mcp-type-chip mcp-plat-chip');
   el.classList.add(type==='Re-run'?'ap-Rerun':type==='ไม่ไลฟ์'?'ap-NoLive':'ap-Live');
   mcpModalType=type;
-  // For ไม่ไลฟ์, MC is not needed — dim the MC section
-  const mcSection=document.getElementById('mcp-mc-chips')?.closest('.mcp-section') || document.getElementById('mcp-mc-chips')?.parentElement;
-  if(mcSection) mcSection.style.opacity=type==='ไม่ไลฟ์'?'0.35':'1';
-  if(type==='ไม่ไลฟ์') mcpModalMC='No MC';
+  // For ไม่ไลฟ์, MC is not needed — dim the MC section (use parentElement, same as openMcpModal reset)
+  const mcChipsEl=document.getElementById('mcp-mc-chips');
+  if(mcChipsEl?.parentElement) mcChipsEl.parentElement.style.opacity=type==='ไม่ไลฟ์'?'0.35':'1';
+  if(type==='ไม่ไลฟ์'){
+    mcpModalMC='No MC';
+  } else if(mcpModalMC==='No MC'){
+    // Switching away from ไม่ไลฟ์ → clear auto-set No MC so MC remains required
+    mcpModalMC=null;
+    document.querySelectorAll('.mcp-mc-chip').forEach(c=>{
+      c.classList.remove('active');
+      c.style.background='';
+      c.style.color=MC_COLORS[c.dataset.mc]||'#666';
+    });
+  }
   mcpUpdatePreview();
 }
 
