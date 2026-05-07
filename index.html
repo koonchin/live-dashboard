@@ -281,6 +281,12 @@
   .mcp-plat-chip.ap-Facebook{border-color:var(--facebook);background:var(--facebook);color:white}
   .mcp-type-chip.ap-Live{border-color:var(--red);background:var(--red);color:white}
   .mcp-type-chip.ap-Rerun{border-color:#6C757D;background:#6C757D;color:white}
+  .mcp-type-chip.ap-NoLive{border-color:#7F8C8D;background:#7F8C8D;color:white}
+  .badge-nolive{background:#EAECEE;color:#555}
+  /* sortable table headers */
+  th.sortable{cursor:pointer;user-select:none}
+  th.sortable:hover{background:#2a4550}
+  .sort-ind{margin-left:3px;opacity:.45;font-size:8px;vertical-align:middle}
   .mcp-shift-type-row{display:flex;align-items:center;gap:6px;padding:3px 0}
   .mcp-type-label{font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px;white-space:nowrap;flex-shrink:0}
   .mcp-type-label.live{background:#FDEDEC;color:var(--red)}
@@ -500,10 +506,11 @@
       </div>
       <div id="cc-mc-section" class="cc-rate-section" style="display:none">
         <div id="cc-mc-rates-list"></div>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap">
-          <button onclick="ccAddRate('mc')" style="font-size:11px;padding:3px 10px;background:#E8F8F5;color:var(--teal);border:1.5px solid var(--teal);border-radius:6px;cursor:pointer;font-weight:600">+ เพิ่ม MC</button>
-          <span class="cost-cfg-unit">Default: <input type="number" id="cc-mc-def" class="cost-cfg-inp" style="width:55px" value="500" min="0" step="50" onchange="updateCostConfig()"> ฿/ชม.</span>
+        <div style="margin-top:5px;font-size:11px;color:var(--gray)">
+          Default: <b id="cc-mc-def-display" style="color:var(--navy)">500</b> ฿/ชม.
+          <span style="margin-left:8px;color:var(--teal);font-size:10px">📋 แก้ไขได้ที่ Google Sheet → Rates</span>
         </div>
+        <input type="hidden" id="cc-mc-def" value="500">
       </div>
       <div class="cost-cfg-row">
         <input type="checkbox" id="cc-admin-chk" onchange="updateCostConfig()">
@@ -513,10 +520,11 @@
       </div>
       <div id="cc-admin-section" class="cc-rate-section" style="display:none">
         <div id="cc-admin-rates-list"></div>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap">
-          <button onclick="ccAddRate('admin')" style="font-size:11px;padding:3px 10px;background:#E8F8F5;color:var(--teal);border:1.5px solid var(--teal);border-radius:6px;cursor:pointer;font-weight:600">+ เพิ่ม Admin</button>
-          <span class="cost-cfg-unit">Default: <input type="number" id="cc-admin-def" class="cost-cfg-inp" style="width:55px" value="0" min="0" step="50" onchange="updateCostConfig()"> ฿/ชม.</span>
+        <div style="margin-top:5px;font-size:11px;color:var(--gray)">
+          Default: <b id="cc-admin-def-display" style="color:var(--navy)">0</b> ฿/ชม.
+          <span style="margin-left:8px;color:var(--teal);font-size:10px">📋 แก้ไขได้ที่ Google Sheet → Rates</span>
         </div>
+        <input type="hidden" id="cc-admin-def" value="0">
       </div>
       <div style="margin-top:8px;font-size:11px;color:var(--gray);display:flex;gap:16px;flex-wrap:wrap">
         <span>Margin สุทธิ ≈ <b id="cc-net-margin" style="color:var(--teal)">—</b>% ต่อยอดขาย</span>
@@ -765,6 +773,7 @@
     </div>
     <div class="mcp-cal-grid" id="mcp-cal-dow"></div>
     <div class="mcp-cal-grid" id="mcp-cal-grid" style="margin-top:4px"></div>
+    <div id="mcp-cal-legend" style="margin-top:8px;font-size:10px;color:var(--gray);display:flex;align-items:center;gap:12px;flex-wrap:wrap"></div>
   </div>
 
   <div class="panel" id="mcp-detail-panel" style="display:none">
@@ -879,8 +888,9 @@
     <div class="mcp-modal-step">
       <div class="mcp-modal-step-label"><span class="mcp-step-num">3</span> ประเภท</div>
       <div class="mcp-plat-chips">
-        <div class="mcp-type-chip mcp-plat-chip" data-type="Live"   onclick="mcpSelectType(this)">🔴 Live</div>
-        <div class="mcp-type-chip mcp-plat-chip" data-type="Re-run" onclick="mcpSelectType(this)">🔄 Re-run</div>
+        <div class="mcp-type-chip mcp-plat-chip" data-type="Live"      onclick="mcpSelectType(this)">🔴 Live</div>
+        <div class="mcp-type-chip mcp-plat-chip" data-type="Re-run"   onclick="mcpSelectType(this)">🔄 Re-run</div>
+        <div class="mcp-type-chip mcp-plat-chip" data-type="ไม่ไลฟ์" onclick="mcpSelectType(this)">⛔ ไม่ไลฟ์</div>
       </div>
     </div>
 
@@ -988,7 +998,7 @@
 
 <script>
 // ========== LOGIN / PIN SYSTEM ==========
-const DASHBOARD_PASSWORD = "1234";
+const DASHBOARD_PASSWORD = "mslive";
 const LOCKED_TABS = ['overview', 'mcplan', 'admin']; // tabs ที่ต้อง PIN
 let pendingTabEl   = null;
 let pendingTabName = null;
@@ -1072,6 +1082,11 @@ let mcpModalMC = null; let mcpModalPlat = null; let mcpModalType = null;
 
 const fmt = n => n ? n.toLocaleString('th-TH') : '-';
 const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+
+// ไม่นับ entries ที่ type=ไม่ไลฟ์, mc=No MC หรือ sales=0 ในการคำนวณ average
+function isRealEntry(e){
+  return e.sales > 0 && e.mc !== 'No MC' && e.type !== 'ไม่ไลฟ์';
+}
 
 function buildDropdown(elId, list, defaultText) {
   const el = document.getElementById(elId);
@@ -1228,7 +1243,23 @@ async function fetchData(){
 
       buildDropdown('f-platform', json.lists['Platform'], '-- เลือก --');
       buildDropdown('f-type', json.lists['Type'], '-- เลือก --');
+      // Ensure ไม่ไลฟ์ is always available in Type dropdown
+      (function(){
+        const fType=document.getElementById('f-type');
+        if(fType && ![...fType.options].some(o=>o.value==='ไม่ไลฟ์')){
+          const opt=document.createElement('option'); opt.value='ไม่ไลฟ์'; opt.textContent='⛔ ไม่ไลฟ์';
+          fType.appendChild(opt);
+        }
+      })();
       buildDropdown('f-mc', json.lists['MC_List'], '-- เลือก --');
+      // Ensure No MC is always available in MC dropdown
+      (function(){
+        const fMc=document.getElementById('f-mc');
+        if(fMc && ![...fMc.options].some(o=>o.value==='No MC')){
+          const opt=document.createElement('option'); opt.value='No MC'; opt.textContent='No MC';
+          fMc.insertBefore(opt, fMc.options[1]);
+        }
+      })();
       buildDropdown('f-s1', json.lists['Support_List'], '-- เลือก --');
       buildDropdown('f-s2', json.lists['Support_List'], '-- ไม่มี --');
       buildDropdown('f-reason', json.lists['Reason_List'], '-- ไม่มี --');
@@ -1515,6 +1546,7 @@ function renderAdmSummary(){
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+  makeTableSortable(document.querySelector('#adm-summary .adm-sum-table'));
 }
 
 // Admin Modal
@@ -1576,7 +1608,9 @@ function renderOverview(){
   const orders  = E.reduce((a,e)=>a+e.orders,0);
   const viewers = E.reduce((a,e)=>a+e.viewers,0);
   const hours   = E.reduce((a,e)=>a+(e.hours||0),0);
-  const avgPS   = E.length ? Math.round(total/E.length) : 0;
+  // เฉลี่ยต่อกะ ไม่นับ ยอด 0, ไม่ไลฟ์, No MC
+  const realE   = E.filter(isRealEntry);
+  const avgPS   = realE.length ? Math.round(realE.reduce((a,e)=>a+e.sales,0)/realE.length) : 0;
   const convRate = (viewers>0 && orders>0) ? (orders/viewers*100).toFixed(1) : '—';
   const aov      = orders>0 ? Math.round(total/orders) : 0;
   const rph      = hours>0  ? Math.round(total/hours)  : 0;
@@ -1636,18 +1670,20 @@ function renderOverview(){
 
   const recent = [...E].slice(-8).reverse();
   document.getElementById('recent-count').textContent = `(${recent.length} รายการล่าสุด)`;
+  const recentTable = document.querySelector('#recent-body')?.closest('table');
   document.getElementById('recent-body').innerHTML = recent.map((e,i)=>`
     <tr class="${i%2?'alt':''}">
       <td>${e.date}</td>
       <td><span class="badge badge-${e.platform.toLowerCase()}">${e.platform}</span></td>
       <td style="font-size:10px">${e.shift}</td>
-      <td><span class="badge badge-${e.type==='Live'?'live':'rerun'}">${e.type}</span></td>
+      <td><span class="badge badge-${e.type==='Live'?'live':e.type==='ไม่ไลฟ์'?'nolive':'rerun'}">${e.type||'Live'}</span></td>
       <td><b>${e.mc||'—'}</b></td>
       <td style="font-size:10px">${[e.s1,e.s2].filter(Boolean).join(', ')||'—'}</td>
       <td style="text-align:right"><b>฿${fmt(e.sales)}</b></td>
       <td>${fmt(e.orders)}</td>
       <td>${fmt(e.viewers)}</td>
     </tr>`).join('');
+  makeTableSortable(recentTable);
 }
 
 // ========== COST CONFIG ==========
@@ -1700,11 +1736,17 @@ function applyRatesFromServer(rates){
   if(rates.mcDefaultRate    !== undefined) costConfig.mcDefaultRate    = +rates.mcDefaultRate;
   if(rates.adminDefaultRate !== undefined) costConfig.adminDefaultRate = +rates.adminDefaultRate;
   costCfgSave();
-  // อัปเดต UI ถ้า panel เปิดอยู่
+  // อัปเดต UI — rates เป็น read-only display
   if(document.getElementById('cc-mc-rates-list'))    ccRenderRates('mc');
   if(document.getElementById('cc-admin-rates-list')) ccRenderRates('admin');
-  if(document.getElementById('cc-mc-def'))           document.getElementById('cc-mc-def').value = costConfig.mcDefaultRate;
-  if(document.getElementById('cc-admin-def'))        document.getElementById('cc-admin-def').value = costConfig.adminDefaultRate;
+  const mcDefEl = document.getElementById('cc-mc-def');
+  if(mcDefEl) mcDefEl.value = costConfig.mcDefaultRate;
+  const mcDefDisp = document.getElementById('cc-mc-def-display');
+  if(mcDefDisp) mcDefDisp.textContent = Number(costConfig.mcDefaultRate||0).toLocaleString('th-TH');
+  const admDefEl = document.getElementById('cc-admin-def');
+  if(admDefEl) admDefEl.value = costConfig.adminDefaultRate;
+  const admDefDisp = document.getElementById('cc-admin-def-display');
+  if(admDefDisp) admDefDisp.textContent = Number(costConfig.adminDefaultRate||0).toLocaleString('th-TH');
 }
 
 function toggleCostCfg(){
@@ -1721,11 +1763,18 @@ function initCostCfgUI(){
   document.getElementById('cc-ads-chk').checked  = costConfig.ads;
   document.getElementById('cc-ads-pct').value    = costConfig.adsPct;
   document.getElementById('cc-mc-chk').checked   = costConfig.mc;
-  document.getElementById('cc-mc-def').value     = costConfig.mcDefaultRate;
+  // cc-mc-def is now a hidden input (rates are read-only from Rates sheet)
+  const mcDefEl = document.getElementById('cc-mc-def');
+  if(mcDefEl) mcDefEl.value = costConfig.mcDefaultRate;
+  const mcDefDisp = document.getElementById('cc-mc-def-display');
+  if(mcDefDisp) mcDefDisp.textContent = Number(costConfig.mcDefaultRate||0).toLocaleString('th-TH');
   document.getElementById('cc-mc-section').style.display = costConfig.mc ? '' : 'none';
   document.getElementById('cc-admin-chk').checked = costConfig.admin;
   document.getElementById('cc-admin-hrs').value   = costConfig.adminHours;
-  document.getElementById('cc-admin-def').value   = costConfig.adminDefaultRate;
+  const admDefEl = document.getElementById('cc-admin-def');
+  if(admDefEl) admDefEl.value = costConfig.adminDefaultRate;
+  const admDefDisp = document.getElementById('cc-admin-def-display');
+  if(admDefDisp) admDefDisp.textContent = Number(costConfig.adminDefaultRate||0).toLocaleString('th-TH');
   document.getElementById('cc-admin-section').style.display = costConfig.admin ? '' : 'none';
   ccRenderRates('mc');
   ccRenderRates('admin');
@@ -1749,13 +1798,10 @@ function updateCostConfig(){
   costConfig.ads     = document.getElementById('cc-ads-chk').checked;
   costConfig.adsPct  = +document.getElementById('cc-ads-pct').value||0;
   costConfig.mc           = document.getElementById('cc-mc-chk').checked;
-  costConfig.mcDefaultRate= +document.getElementById('cc-mc-def').value||0;
+  // mcDefaultRate/adminDefaultRate are read-only from Rates sheet — do not overwrite from DOM
   costConfig.admin        = document.getElementById('cc-admin-chk').checked;
   costConfig.adminHours   = +document.getElementById('cc-admin-hrs').value||8;
-  costConfig.adminDefaultRate = +document.getElementById('cc-admin-def').value||0;
-  // read rate rows
-  costConfig.mcRates    = ccReadRates('mc');
-  costConfig.adminRates = ccReadRates('admin');
+  // mcRates/adminRates are read-only from Rates sheet — do not overwrite from DOM
   costCfgSave();
   refreshCostDisplay();
   renderOverview();
@@ -1799,55 +1845,23 @@ function hasCostConfig(){
   return costConfig.prod||costConfig.fee||costConfig.ads||costConfig.mc||costConfig.admin;
 }
 
-// ---- CC rate table helpers ----
+// ---- CC rate table helpers (read-only — แก้ไขได้ที่ Google Sheet → Rates) ----
 function ccRenderRates(type){
   const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
   const listId = `cc-${type}-rates-list`;
   const el = document.getElementById(listId);
   if(!el) return;
-  el.innerHTML = Object.entries(map).map(([name,rate])=>`
-    <div class="cc-rate-row">
-      <input class="cc-rate-name" type="text" value="${name}" placeholder="ชื่อ"
-        onchange="ccRenameRate('${type}','${name}',this.value)">
-      <input class="cost-cfg-inp" type="number" value="${rate}" min="0" step="50"
-        onchange="ccChangeRate('${type}','${name}',+this.value||0)">
-      <span class="cost-cfg-unit">฿/ชม.</span>
-      <button class="cc-del-btn" onclick="ccDeleteRate('${type}','${name}')">×</button>
+  const entries = Object.entries(map);
+  if(!entries.length){
+    el.innerHTML = '<div style="color:var(--gray);font-size:11px;padding:3px 0">ยังไม่มีข้อมูล — กด Refresh เพื่อดึงจาก Rates sheet</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([name,rate])=>`
+    <div class="cc-rate-row" style="padding:3px 0;gap:8px">
+      <span style="min-width:90px;font-size:12px;font-weight:600;color:var(--navy)">${name}</span>
+      <span style="font-size:12px;font-weight:700;color:var(--teal)">฿${Number(rate).toLocaleString('th-TH')}</span>
+      <span class="cost-cfg-unit">/ชม.</span>
     </div>`).join('');
-}
-function ccAddRate(type){
-  const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
-  let name = type==='mc' ? 'MC ใหม่' : 'Admin ใหม่';
-  let i=1; while(map[name]) name=(type==='mc'?'MC ':'Admin ')+i++;
-  map[name]=type==='mc'?(costConfig.mcDefaultRate||500):(costConfig.adminDefaultRate||0);
-  costCfgSave(); ccRenderRates(type);
-}
-function ccDeleteRate(type, name){
-  const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
-  delete map[name]; costCfgSave(); ccRenderRates(type);
-}
-function ccRenameRate(type, oldName, newName){
-  newName=newName.trim(); if(!newName||newName===oldName) return;
-  const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
-  map[newName]=map[oldName]; delete map[oldName];
-  costCfgSave(); ccRenderRates(type);
-}
-function ccChangeRate(type, name, val){
-  const map = type==='mc' ? costConfig.mcRates : costConfig.adminRates;
-  map[name]=val; costCfgSave();
-}
-function ccReadRates(type){
-  // Read current rates from DOM (in case user typed without triggering onchange)
-  const listId=`cc-${type}-rates-list`;
-  const el=document.getElementById(listId); if(!el) return {};
-  const rows=el.querySelectorAll('.cc-rate-row');
-  const map={};
-  rows.forEach(row=>{
-    const name=row.querySelector('.cc-rate-name')?.value?.trim();
-    const rate=+row.querySelector('.cost-cfg-inp')?.value||0;
-    if(name) map[name]=rate;
-  });
-  return map;
 }
 // ---- Overview platform filter ----
 function getOvEntries(){
@@ -1960,17 +1974,23 @@ function renderOverviewHeatmap(){
 // ========== MC ==========
 function getMCStats(data){
   data = data || getFiltered();
-  const mcs = [...new Set(data.map(e=>e.mc).filter(Boolean))].sort();
+  // ไม่นับ No MC ในสถิติ MC rank
+  const mcs = [...new Set(data.map(e=>e.mc).filter(Boolean).filter(mc=>mc!=='No MC'))].sort();
   return mcs.map(mc=>{
     const r = data.filter(e=>e.mc===mc);
-    const sh = r.filter(e=>e.platform==='Shopee');
-    const tt = r.filter(e=>e.platform==='TikTok');
-    const fb = r.filter(e=>e.platform==='Facebook'); // เพิ่มการคำนวณ MC ให้รองรับ Facebook
-    return { mc, count:r.length, totalSales:r.reduce((a,e)=>a+e.sales,0),
-      avgSales:r.length?avg(r.map(e=>e.sales)):0, avgViewers:r.length?avg(r.map(e=>e.viewers)):0,
+    const real = r.filter(isRealEntry); // ใช้เฉพาะ real entries สำหรับ avg
+    const sh = real.filter(e=>e.platform==='Shopee');
+    const tt = real.filter(e=>e.platform==='TikTok');
+    const fb = real.filter(e=>e.platform==='Facebook');
+    return {
+      mc, count:r.length,
+      totalSales:real.reduce((a,e)=>a+e.sales,0),
+      avgSales:real.length?avg(real.map(e=>e.sales)):0,
+      avgViewers:real.length?avg(real.map(e=>e.viewers)):0,
       shopCount:sh.length, shopAvg:sh.length?avg(sh.map(e=>e.sales)):0,
       tiktCount:tt.length, tiktAvg:tt.length?avg(tt.map(e=>e.sales)):0,
-      faceCount:fb.length, faceAvg:fb.length?avg(fb.map(e=>e.sales)):0 };
+      faceCount:fb.length, faceAvg:fb.length?avg(fb.map(e=>e.sales)):0,
+    };
   }).filter(m=>m.count>0);
 }
 
@@ -1998,6 +2018,7 @@ function renderMC(){
     </div>`;
   }).join('');
 
+  const mcBodyTable = document.querySelector('#mc-body')?.closest('table');
   document.getElementById('mc-body').innerHTML = stats.map((s,i)=>{
     const cls = i===0?'badge-top':s.avgSales>=meanAvg?'badge-mid':'badge-low';
     const lbl = i===0?'Top Performer':s.avgSales>=meanAvg?'ปานกลาง':'ควรตรวจสอบ';
@@ -2025,6 +2046,7 @@ function renderMC(){
     </tr>`;
   }).join('');
 
+  const mcPlatBodyTable = document.querySelector('#mc-platform-body')?.closest('table');
   document.getElementById('mc-platform-body').innerHTML = stats.map((s,i)=>{
     // Performance Index per platform
     const piShop = platAvg['Shopee']>0 && s.shopCount ? Math.round(s.shopAvg/platAvg['Shopee']*100) : null;
@@ -2050,12 +2072,17 @@ function renderMC(){
       <td>${dom}</td>
     </tr>`;
   }).join('');
+  // Apply sorting to MC tables (only first time — static table elements)
+  makeTableSortable(mcBodyTable);
+  makeTableSortable(mcPlatBodyTable);
 }
 
 // ========== SHIFT ==========
 function getShiftData(data, platform, shift){
   const r = data.filter(e=>e.platform===platform&&e.shift===shift);
-  const l = r.filter(e=>e.type==='Live'), rr = r.filter(e=>e.type==='Re-run');
+  // ใช้ isRealEntry สำหรับ avg (ไม่นับ ยอด 0, No MC, ไม่ไลฟ์)
+  const l  = r.filter(e=>e.type==='Live'   && isRealEntry(e));
+  const rr = r.filter(e=>e.type==='Re-run' && isRealEntry(e));
   const liveSum  = l.reduce((a,e)=>a+e.sales,0);
   const rerunSum = rr.reduce((a,e)=>a+e.sales,0);
   return {
@@ -2077,7 +2104,8 @@ function getTimeSlotsForPlatform(data, platform){
 
 function getTimeSlotData(data, platform, timeSlot){
   const r = data.filter(e=>e.platform===platform&&e.start_time===timeSlot);
-  const l = r.filter(e=>e.type==='Live'), rr = r.filter(e=>e.type==='Re-run');
+  const l  = r.filter(e=>e.type==='Live'   && isRealEntry(e));
+  const rr = r.filter(e=>e.type==='Re-run' && isRealEntry(e));
   const liveSum  = l.reduce((a,e)=>a+e.sales,0);
   const rerunSum = rr.reduce((a,e)=>a+e.sales,0);
   return {
@@ -2229,6 +2257,7 @@ function renderShift(){
       <td>${diff}</td><td>${rec}</td>
     </tr>`;
   }).join('');
+  makeTableSortable(document.querySelector('#shift-body')?.closest('table'));
 }
 
 // ========== ENTRY CALENDAR ==========
@@ -2347,12 +2376,23 @@ function getVariantBadge(variant){
 function onVariantChange(){
   const v=document.getElementById('f-shift-variant').value;
   const isCancelled=v==='ยกเลิก';
+  const isNoLive=document.getElementById('f-type').value==='ไม่ไลฟ์';
   ['f-sales','f-orders','f-viewers'].forEach(id=>{
-    const fg=document.getElementById(id)?.closest('.form-group');
-    if(fg) fg.style.opacity=isCancelled?'0.35':'1';
     const el=document.getElementById(id);
-    if(el) el.disabled=isCancelled;
+    if(!el) return;
+    el.disabled=(isCancelled||isNoLive);
+    const fg=el.closest('.form-group');
+    if(fg) fg.style.opacity=(isCancelled||isNoLive)?'0.35':'1';
   });
+  if(isCancelled){
+    // Auto-set MC to No MC for cancelled shifts
+    const mcEl=document.getElementById('f-mc');
+    if(mcEl && !mcEl.disabled){
+      for(let i=0;i<mcEl.options.length;i++){
+        if(mcEl.options[i].value==='No MC'){ mcEl.selectedIndex=i; break; }
+      }
+    }
+  }
 }
 
 // ========== REQ-02: Required Field Validation ==========
@@ -2380,8 +2420,13 @@ function showFieldError(errId, show){
 function validateField(fieldId, forceShow){
   const rf = REQUIRED_FIELDS.find(f=>f.id===fieldId);
   if(!rf) return true;
-  // MC ไม่ required สำหรับ Re-run
-  if(fieldId==='f-mc' && document.getElementById('f-type')?.value==='Re-run'){
+  // MC ไม่ required สำหรับ Re-run และ ไม่ไลฟ์
+  const _t = document.getElementById('f-type')?.value;
+  if(fieldId==='f-mc' && (_t==='Re-run' || _t==='ไม่ไลฟ์')){
+    setFieldState(fieldId,'filled'); showFieldError(rf.errId,false); return true;
+  }
+  // Sales ไม่ required สำหรับ ไม่ไลฟ์
+  if(fieldId==='f-sales' && _t==='ไม่ไลฟ์'){
     setFieldState(fieldId,'filled'); showFieldError(rf.errId,false); return true;
   }
   const el = document.getElementById(fieldId);
@@ -2395,9 +2440,12 @@ function validateField(fieldId, forceShow){
 function validateAllRequired(){
   const isCancelled = document.getElementById('f-shift-variant')?.value === 'ยกเลิก';
   const isRerun     = document.getElementById('f-type')?.value === 'Re-run';
+  const isNoLive    = document.getElementById('f-type')?.value === 'ไม่ไลฟ์';
   let ok = true;
   REQUIRED_FIELDS.forEach(rf=>{
-    const skip = (isCancelled && rf.id==='f-sales') || (isRerun && rf.id==='f-mc');
+    const skip = (isCancelled && rf.id==='f-sales')
+              || (isRerun    && rf.id==='f-mc')
+              || (isNoLive   && (rf.id==='f-mc' || rf.id==='f-sales'));
     if(skip){ setFieldState(rf.id,'filled'); showFieldError(rf.errId,false); return; }
     const el = document.getElementById(rf.id);
     if(!el) return;
@@ -2447,20 +2495,43 @@ function onShiftChange(){
 
 function toggleMC(){
   const t = document.getElementById('f-type').value;
-  const isRerun = t === 'Re-run';
+  const isRerun  = t === 'Re-run';
+  const isNoLive = t === 'ไม่ไลฟ์';
   const mcEl = document.getElementById('f-mc');
-  document.getElementById('mc-group').style.opacity = isRerun ? '0.4' : '1';
-  mcEl.disabled = isRerun;
-  if(isRerun){
-    mcEl.selectedIndex = 0; // ล้างค่า MC เมื่อเป็น Re-run
-    setFieldState('f-mc', 'filled'); // ไม่ required สำหรับ Re-run
-    showFieldError('err-mc', false);
+
+  // Disable/enable sales-related fields for ไม่ไลฟ์
+  ['f-sales','f-orders','f-viewers'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.disabled = isNoLive;
+    const fg = el.closest('.form-group');
+    if(fg) fg.style.opacity = isNoLive ? '0.35' : '1';
+  });
+
+  if(isRerun || isNoLive){
+    document.getElementById('mc-group').style.opacity = '0.4';
+    mcEl.disabled = true;
+    if(isNoLive){
+      // Auto-set MC to "No MC"
+      for(let i=0;i<mcEl.options.length;i++){
+        if(mcEl.options[i].value==='No MC'){ mcEl.selectedIndex=i; break; }
+      }
+    } else {
+      mcEl.selectedIndex = 0; // Re-run: clear MC
+    }
+    setFieldState('f-mc','filled');
+    showFieldError('err-mc',false);
+  } else {
+    document.getElementById('mc-group').style.opacity = '1';
+    mcEl.disabled = false;
   }
 }
 
 async function addEntry(){
   const variant = document.getElementById('f-shift-variant').value || 'ปกติ';
   const isCancelledEntry = variant === 'ยกเลิก';
+  const entryType = document.getElementById('f-type').value;
+  const isNoLiveEntry = entryType === 'ไม่ไลฟ์';
 
   // REQ-02: Validate required fields
   if(!isCancelledEntry && !validateAllRequired()){
@@ -2472,13 +2543,13 @@ async function addEntry(){
     date: document.getElementById('f-date').value,
     platform: document.getElementById('f-platform').value,
     shift: document.getElementById('f-shift').value,
-    type: document.getElementById('f-type').value,
-    mc: document.getElementById('f-type').value==='Re-run' ? '' : document.getElementById('f-mc').value,
+    type: entryType,
+    mc: isNoLiveEntry ? 'No MC' : (entryType==='Re-run' ? '' : document.getElementById('f-mc').value),
     s1: document.getElementById('f-s1').value,
     s2: document.getElementById('f-s2').value,
-    sales: isCancelledEntry ? 0 : (+document.getElementById('f-sales').value||0),
-    orders: isCancelledEntry ? 0 : (+document.getElementById('f-orders').value||0),
-    viewers: isCancelledEntry ? 0 : (+document.getElementById('f-viewers').value||0),
+    sales:   (isCancelledEntry||isNoLiveEntry) ? 0 : (+document.getElementById('f-sales').value||0),
+    orders:  (isCancelledEntry||isNoLiveEntry) ? 0 : (+document.getElementById('f-orders').value||0),
+    viewers: (isCancelledEntry||isNoLiveEntry) ? 0 : (+document.getElementById('f-viewers').value||0),
     hours: +document.getElementById('f-hours').value||4.0,
     start_time: document.getElementById('f-start-time').value || '',
     reason: document.getElementById('f-reason').value,
@@ -2567,6 +2638,13 @@ function clearForm(){
   document.getElementById('f-technical-issues').value = 'ไม่มีปัญหา';
   document.getElementById('mc-group').style.opacity='1';
   document.getElementById('f-mc').disabled=false;
+  // Re-enable sales fields (may have been disabled by toggleMC for ไม่ไลฟ์)
+  ['f-sales','f-orders','f-viewers'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.disabled=false; }
+    const fg=el?.closest('.form-group');
+    if(fg) fg.style.opacity='1';
+  });
   onVariantChange();
   resetRequiredFieldStates();
 }
@@ -2576,6 +2654,7 @@ function renderEntry(){
   renderDailyView();
   const E = getFiltered();
   document.getElementById('entry-count').textContent = E.length === entries.length ? entries.length : `${E.length} / ${entries.length}`;
+  const entryTable = document.querySelector('#entry-body')?.closest('table');
   document.getElementById('entry-body').innerHTML = [...E].reverse().map((e,i)=>{
     const realIdx = entries.indexOf(e);
     const sph = e.hours>0 ? Math.round(e.sales/e.hours) : 0;
@@ -2583,7 +2662,7 @@ function renderEntry(){
       <td>${e.date}</td>
       <td><span class="badge badge-${e.platform.toLowerCase()}">${e.platform}</span></td>
       <td style="font-size:10px">${e.shift}</td>
-      <td><span class="badge badge-${e.type==='Live'?'live':'rerun'}">${e.type}</span></td>
+      <td><span class="badge badge-${e.type==='Live'?'live':e.type==='ไม่ไลฟ์'?'nolive':'rerun'}">${e.type||'Live'}</span></td>
       <td><b>${e.mc||'—'}</b></td>
       <td style="font-size:10px">${e.s1||'—'}</td>
       <td style="text-align:right">฿${fmt(e.sales)}</td>
@@ -2592,6 +2671,7 @@ function renderEntry(){
       <td><button class="btn btn-danger" onclick="deleteEntry(${realIdx})">ลบ</button></td>
     </tr>`;
   }).join('');
+  makeTableSortable(entryTable);
 }
 
 function exportCSV(){
@@ -2668,12 +2748,17 @@ function renderDailyView(){
       const entry = dateEntries.find(e => e.platform === plat.name && e.shift === shift);
       const plan  = mcpPlans.find(p => p.date === entryViewDate && p.platform === plat.name && p.shift === shift);
       const isCancelled = entry && entry.shift_variant === 'ยกเลิก';
+      const isNoLiveEntry = entry && entry.type === 'ไม่ไลฟ์';
+      const isNoLivePlan  = !entry && plan && plan.type === 'ไม่ไลฟ์';
       const isAdhoc = entry && entry.shift_variant === 'Ad-hoc';
       const hasVariant = entry && entry.shift_variant && entry.shift_variant !== 'ปกติ' && entry.shift_variant !== 'ยกเลิก';
       // นับ filled เฉพาะ required shift (กะที่ 5 = required ถ้ามี plan)
       const isOptShift = shift === OPT_SHIFT;
       const shiftPlanned = mcpPlans.some(p=>p.date===entryViewDate&&p.platform===plat.name&&p.shift===shift);
-      if(entry && !isCancelled && plat.required && (!isOptShift || shiftPlanned)) filled++;
+      // ไม่ไลฟ์ (entry หรือ plan) นับว่า filled แล้ว
+      if(plat.required && (!isOptShift || shiftPlanned)){
+        if((entry && !isCancelled) || isNoLivePlan) filled++;
+      }
       const isSelected = locked && formDate === entryViewDate && curPlatform === plat.name && curShift === shift;
       let cls, statusHtml;
       if(isSelected) {
@@ -2682,11 +2767,17 @@ function renderDailyView(){
       } else if(isCancelled) {
         cls = 'cancelled';
         statusHtml = `<div class="slot-cancelled">❌ ยกเลิก</div>`;
-      } else if(entry && !isCancelled) {
+      } else if(isNoLiveEntry) {
+        cls = 'cancelled';
+        statusHtml = `<div class="slot-cancelled">⛔ ไม่ไลฟ์</div>`;
+      } else if(entry) {
         cls = isAdhoc ? 'adhoc' : 'filled';
         const vBadge = hasVariant ? `<div>${getVariantBadge(entry.shift_variant)}</div>` : '';
         statusHtml = `<div class="slot-ok">✅ กรอกแล้ว</div>
           <div class="slot-detail">${entry.mc||(entry.type==='Re-run'?'Re-run':'—')} · ฿${fmt(entry.sales)}</div>${vBadge}`;
+      } else if(isNoLivePlan) {
+        cls = 'cancelled';
+        statusHtml = `<div class="slot-cancelled">⛔ ไม่ไลฟ์ (แผน)</div>`;
       } else if(plan) {
         cls = 'planned';
         statusHtml = `<div class="slot-planned">🟡 รอกรอก</div>
@@ -2812,6 +2903,58 @@ function unlockForm(){
   renderDailyView();
 }
 
+// ========== TABLE SORTING ==========
+const _sortState = {}; // tableId → {col, asc}
+
+function makeTableSortable(tableEl){
+  if(!tableEl) return;
+  if(tableEl._sortableAttached) return; // already attached (static tables only run once)
+  tableEl._sortableAttached = true;
+  tableEl.querySelectorAll('thead th').forEach((th, idx) => {
+    th.classList.add('sortable');
+    const ind = document.createElement('span');
+    ind.className = 'sort-ind';
+    ind.textContent = '⇅';
+    th.appendChild(ind);
+    th.addEventListener('click', () => sortTableCol(tableEl, idx, th));
+  });
+}
+
+function sortTableCol(tableEl, colIdx, thEl){
+  // Ensure unique ID
+  if(!tableEl.id && !tableEl._sortId){
+    tableEl._sortId = 'tbl_' + Math.random().toString(36).slice(2);
+  }
+  const key = tableEl.id || tableEl._sortId;
+  const prev = _sortState[key];
+  const asc = (prev && prev.col === colIdx) ? !prev.asc : true;
+  _sortState[key] = {col:colIdx, asc};
+
+  const tbody = tableEl.querySelector('tbody');
+  if(!tbody) return;
+  // Exclude special rows (e.g. pva-summary-row)
+  const rows = [...tbody.querySelectorAll('tr:not(#pva-summary-row)')];
+
+  rows.sort((a,b)=>{
+    const aText = (a.cells[colIdx]?.textContent||'').trim();
+    const bText = (b.cells[colIdx]?.textContent||'').trim();
+    // Strip currency/comma to get number
+    const aNum = parseFloat(aText.replace(/[฿,%\s,]/g,''));
+    const bNum = parseFloat(bText.replace(/[฿,%\s,]/g,''));
+    if(!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum-bNum : bNum-aNum;
+    // Date strings
+    if(/^\d{4}-\d{2}-\d{2}/.test(aText)) return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+    return asc ? aText.localeCompare(bText,'th') : bText.localeCompare(aText,'th');
+  });
+
+  // Update sort indicators on all th
+  tableEl.querySelectorAll('thead th .sort-ind').forEach(s=>s.textContent='⇅');
+  const ind = thEl?.querySelector('.sort-ind');
+  if(ind) ind.textContent = asc ? '▲' : '▼';
+
+  rows.forEach(r=>tbody.appendChild(r));
+}
+
 // ========== UTILS ==========
 function showToast(msg, isErr=false){
   const t = document.getElementById('toast');
@@ -2910,18 +3053,30 @@ function renderMcpCalendar(){
     const reqCount=baseReq+optPlanned.size;
     const covPct=reqCount>0?Math.min(covCount/reqCount*100,100):0;
     const covColor=covPct===0?'#E0E0E0':covPct<50?'#E74C3C':covPct<100?'#F39C12':'#27AE60';
-    const uniqMCs=[...new Set(dayPlans.map(p=>p.mc).filter(Boolean))];
-    const dots=uniqMCs.slice(0,6).map(mc=>`<div class="mcp-mc-dot" style="background:${MC_COLORS[mc]||'#AAA'}" title="${mc}"></div>`).join('');
+    const noLiveCount = dayPlans.filter(p=>p.type==='ไม่ไลฟ์').length;
+    const unfilledCount = Math.max(0, reqCount - covCount);
+    let badgesHtml = '';
+    if(noLiveCount > 0)   badgesHtml += `<span style="font-size:8px;padding:1px 4px;border-radius:8px;background:#EAECEE;color:#555;white-space:nowrap">⛔${noLiveCount}</span> `;
+    if(unfilledCount > 0) badgesHtml += `<span style="font-size:8px;padding:1px 4px;border-radius:8px;background:#FCF3CF;color:#7D6608;white-space:nowrap">⚠${unfilledCount}</span>`;
     const isTodayCls=ds===todayStr?' today':'';
     const isSelCls=ds===mcpSelectedDate?' mcp-selected':'';
     html+=`<div class="mcp-cal-day${isTodayCls}${isSelCls}" onclick="mcpClickDay('${ds}')">
       <div class="mcp-cal-day-num">${d}</div>
       <div class="mcp-cov-bar"><div class="mcp-cov-fill" style="width:${covPct}%;background:${covColor}"></div></div>
       <div class="mcp-cov-text">${reqCount>0?covCount+'/'+reqCount:''}</div>
-      <div class="mcp-mc-dots">${dots}</div>
+      <div class="mcp-mc-dots" style="gap:2px;margin-top:2px;display:flex;flex-wrap:wrap">${badgesHtml}</div>
     </div>`;
   }
   document.getElementById('mcp-cal-grid').innerHTML=html;
+
+  // Update calendar legend
+  const legendEl = document.getElementById('mcp-cal-legend');
+  if(legendEl) legendEl.innerHTML = `
+    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:5px;border-radius:3px;background:#27AE60"></span> ครบทุกกะ (อัพเดทเรียบร้อย)</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:5px;border-radius:3px;background:#F39C12"></span> กำหนดบางส่วน</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:5px;border-radius:3px;background:#E74C3C"></span> ยังไม่กำหนด</span>
+    <span style="display:flex;align-items:center;gap:4px">⛔ = ไม่ไลฟ์</span>
+    <span style="display:flex;align-items:center;gap:4px">⚠ = ยังไม่จัด</span>`;
 }
 
 function mcpClickDay(ds){
@@ -2970,8 +3125,8 @@ function renderMcpDayDetail(ds){
   const cards=platforms.map(plat=>{
     if(!plat.shifts.length) return '';
 
-    // coverage count (shifts with at least Live plan)
-    const covCount=plat.shifts.filter(s=>dayPlans.some(p=>p.platform===plat.name&&p.shift===s&&(p.type||'Live')==='Live')).length;
+    // coverage count (shifts with at least Live plan or ไม่ไลฟ์ plan)
+    const covCount=plat.shifts.filter(s=>dayPlans.some(p=>p.platform===plat.name&&p.shift===s&&((p.type||'Live')==='Live'||p.type==='ไม่ไลฟ์'))).length;
     // total required: กะที่ 5 นับต่อเมื่อมี plan วันนั้น
     const OPT_SH='กะที่ 5';
     const total=plat.req?plat.shifts.filter(s=>s!==OPT_SH||dayPlans.some(p=>p.platform===plat.name&&p.shift===s)).length:plat.shifts.length;
@@ -2985,27 +3140,39 @@ function renderMcpDayDetail(ds){
       const eD=ds, eP=plat.name, eS=shift.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       const livePlan    =dayPlans.find(p=>p.platform===plat.name&&p.shift===shift&&(p.type||'Live')==='Live');
       const rerunPlan   =dayPlans.find(p=>p.platform===plat.name&&p.shift===shift&&p.type==='Re-run');
+      const noLivePlan  =dayPlans.find(p=>p.platform===plat.name&&p.shift===shift&&p.type==='ไม่ไลฟ์');
       const liveActual  =entries.find(e=>e.date===ds&&e.platform===plat.name&&e.shift===shift&&(e.type||'').toLowerCase().includes('live'));
       const rerunActual =entries.find(e=>e.date===ds&&e.platform===plat.name&&e.shift===shift&&(e.type||'').toLowerCase().includes('re'));
-      const hasLive     =livePlan||liveActual;
-      const hasRerun    =rerunPlan||rerunActual;
-      // shift status dot — นับทั้ง Live และ Re-run
-      const dotColor=liveActual?'#27AE60':rerunActual?'#27AE60':livePlan?'#F39C12':rerunPlan?'#6C757D':'#CCC';
+      const noLiveActual=entries.find(e=>e.date===ds&&e.platform===plat.name&&e.shift===shift&&e.type==='ไม่ไลฟ์');
+      // shift status dot
+      const dotColor=liveActual||rerunActual||noLiveActual?'#27AE60':noLivePlan?'#7F8C8D':livePlan?'#F39C12':rerunPlan?'#6C757D':'#CCC';
       const statusBadge=liveActual
         ?`<span style="font-size:9px;color:#27AE60;margin-left:auto">✅ กรอกแล้ว</span>`
         :rerunActual
         ?`<span style="font-size:9px;color:#6C757D;margin-left:auto">✅ 🔄 Re-run</span>`
+        :noLiveActual
+        ?`<span style="font-size:9px;color:#7F8C8D;margin-left:auto">⛔ ไม่ไลฟ์</span>`
+        :noLivePlan
+        ?`<span style="font-size:9px;color:#7F8C8D;margin-left:auto">⛔ ไม่ไลฟ์ (แผน)</span>`
         :livePlan
         ?`<span style="font-size:9px;color:#E67E22;margin-left:auto">🟡 รอกรอก</span>`
         :`<span style="font-size:9px;color:#CCC;margin-left:auto">—</span>`;
+      // Build type rows; for ไม่ไลฟ์ slot just show the ไม่ไลฟ์ row
+      const typeRowsHtml = noLivePlan
+        ? `<div class="mcp-shift-type-row">
+            <span class="mcp-type-label" style="font-size:9px;padding:1px 5px;background:#7F8C8D;color:#fff;border-radius:8px">⛔ ไม่ไลฟ์</span>
+            <div class="mcp-shift-mc" style="background:#EAECEE;color:#555;font-size:11px;padding:1px 7px;border-radius:12px;font-weight:700">No MC</div>
+            <button class="mcp-remove-btn" onclick="mcpRemovePlan('${eD}','${eP}','${eS}','ไม่ไลฟ์')" style="margin-left:auto">✕</button>
+           </div>`
+        : mkTypeRow(livePlan,liveActual,'Live','live',eD,eP,eS)
+        + mkTypeRow(rerunPlan,rerunActual,'Re-run','rerun',eD,eP,eS);
       return `<div class="mcp-shift-item">
         <div class="mcp-shift-item-name">
           <span style="width:7px;height:7px;border-radius:50%;background:${dotColor};display:inline-block;flex-shrink:0"></span>
           <span>${shift}</span>
           ${statusBadge}
         </div>
-        ${mkTypeRow(livePlan,liveActual,'Live','live',eD,eP,eS)}
-        ${mkTypeRow(rerunPlan,rerunActual,'Re-run','rerun',eD,eP,eS)}
+        ${typeRowsHtml}
       </div>`;
     }).join('');
 
@@ -3249,6 +3416,7 @@ function renderMcpPlanVsActual(){
   pvUpdateSummary(rows);
   if(document.getElementById('pva-count-badge')) document.getElementById('pva-count-badge').textContent=`${rows.length} รายการ`;
   if(document.getElementById('pva-count-info'))  document.getElementById('pva-count-info').textContent=`(${rows.length} รายการ)`;
+  makeTableSortable(document.getElementById('pva-table'));
 }
 
 // ----- Modal -----
@@ -3260,8 +3428,10 @@ function openMcpModal(prefillDate, prefillPlat, prefillShift, prefillType){
     const c=MC_COLORS[mc]||'#666';
     return `<div class="mcp-mc-chip" data-mc="${mc}" style="border-color:${c};color:${c}" onclick="mcpSelectMC(this,'${mc.replace(/'/g,"\\'")}','${c}')">${mc}</div>`;
   }).join('')||'<div style="color:var(--gray);font-size:12px">ยังไม่มี MC — Refresh ก่อน</div>';
-  // Reset platform + type chips
+  // Reset platform + type chips + MC section opacity
   document.querySelectorAll('.mcp-plat-chip').forEach(c=>c.className=c.classList.contains('mcp-type-chip')?'mcp-type-chip mcp-plat-chip':'mcp-plat-chip');
+  const mcChipsParent=document.getElementById('mcp-mc-chips')?.parentElement;
+  if(mcChipsParent) mcChipsParent.style.opacity='1';
   document.getElementById('mcp-shift-checks').innerHTML='<div style="color:var(--gray);font-size:12px;padding:8px">เลือก Platform ก่อน</div>';
   // Date range default
   const today=new Date(); const todStr=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -3274,7 +3444,7 @@ function openMcpModal(prefillDate, prefillPlat, prefillShift, prefillType){
     if(chip) mcpSelectPlat(chip);
   }
   if(prefillType){
-    const tKey=prefillType==='Re-run'?'Re-run':'Live';
+    const tKey=prefillType==='Re-run'?'Re-run':prefillType==='ไม่ไลฟ์'?'ไม่ไลฟ์':'Live';
     const tc=document.querySelector(`.mcp-type-chip[data-type="${tKey}"]`);
     if(tc) mcpSelectType(tc);
   }
@@ -3297,10 +3467,14 @@ function mcpSelectMC(el,mc,color){
 }
 
 function mcpSelectType(el){
-  const type=el.dataset.type; // 'Live' or 'Re-run'
+  const type=el.dataset.type; // 'Live', 'Re-run', or 'ไม่ไลฟ์'
   document.querySelectorAll('.mcp-type-chip').forEach(c=>c.className='mcp-type-chip mcp-plat-chip');
-  el.classList.add(type==='Re-run'?'ap-Rerun':'ap-Live');
+  el.classList.add(type==='Re-run'?'ap-Rerun':type==='ไม่ไลฟ์'?'ap-NoLive':'ap-Live');
   mcpModalType=type;
+  // For ไม่ไลฟ์, MC is not needed — dim the MC section
+  const mcSection=document.getElementById('mcp-mc-chips')?.closest('.mcp-section') || document.getElementById('mcp-mc-chips')?.parentElement;
+  if(mcSection) mcSection.style.opacity=type==='ไม่ไลฟ์'?'0.35':'1';
+  if(type==='ไม่ไลฟ์') mcpModalMC='No MC';
   mcpUpdatePreview();
 }
 
@@ -3370,9 +3544,9 @@ function mcpUpdatePreview(){
 }
 
 function saveMcpAssignment(){
-  if(!mcpModalMC && mcpModalType !== 'Re-run') { showToast('❌ เลือก MC ก่อน',true); return; }
+  if(!mcpModalMC && mcpModalType !== 'Re-run' && mcpModalType !== 'ไม่ไลฟ์') { showToast('❌ เลือก MC ก่อน',true); return; }
   if(!mcpModalPlat){ showToast('❌ เลือก Platform ก่อน',true); return; }
-  if(!mcpModalType){ showToast('❌ เลือกประเภท (Live/Re-run) ก่อน',true); return; }
+  if(!mcpModalType){ showToast('❌ เลือกประเภท (Live/Re-run/ไม่ไลฟ์) ก่อน',true); return; }
   const checked=[...document.querySelectorAll('#mcp-shift-checks input:checked')].map(cb=>cb.value);
   if(!checked.length){ showToast('❌ เลือกกะอย่างน้อย 1 กะ',true); return; }
   const from=document.getElementById('mcp-date-from').value;
@@ -3395,7 +3569,8 @@ function saveMcpAssignment(){
     // REQ-01: use per-shift default start_time if field is blank
     const defST = shiftDefaults.find(d=>d.platform===mcpModalPlat&&d.shift===shift);
     const st = planStartTime || defST?.start_time || '';
-    const plan={date,platform:mcpModalPlat,shift,mc:mcpModalMC,type:t,start_time:st,hours:planHours};
+    const mc = t==='ไม่ไลฟ์' ? 'No MC' : mcpModalMC;
+    const plan={date,platform:mcpModalPlat,shift,mc,type:t,start_time:st,hours:planHours};
     mcpPlans.push(plan);
     newPlans.push(plan);
   }
